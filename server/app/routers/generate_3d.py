@@ -4,6 +4,7 @@ import logging
 import re
 import zipfile
 from datetime import datetime, timezone
+from typing import Optional
 from urllib.parse import unquote, urlparse
 
 import httpx
@@ -94,7 +95,7 @@ def _add_bundle_entry(entries: list, seen: set, path: str, url: str, url_only: b
     entries.append({"path": path, "url": normalized, "urlOnly": bool(url_only)})
 
 
-def _build_bundle_entries(world_labs_data: dict, export: dict | None) -> list:
+def _build_bundle_entries(world_labs_data: dict, export: Optional[dict]) -> list:
     entries = []
     seen = set()
 
