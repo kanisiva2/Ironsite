@@ -37,7 +37,7 @@ export default function LoginPage() {
             <div className="h-px w-14 bg-gradient-to-l from-transparent to-primary/50" />
           </div>
           <h1 className="mb-2 text-5xl font-light tracking-[0.22em] text-text uppercase">
-            Ironsite
+            Archvision
           </h1>
           <p className="text-xs font-medium uppercase tracking-[0.3em] text-text-muted">
             AI Architecture Studio

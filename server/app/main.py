@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Ironsite API",
+    title="Archvision API",
     description="AI Architect Studio backend",
     version="0.1.0",
     lifespan=lifespan,

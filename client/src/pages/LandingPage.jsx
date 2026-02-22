@@ -146,19 +146,12 @@ export default function LandingPage() {
         boxShadow: '0 1px 0 0 var(--color-border), 0 3px 0 0 rgba(200,150,92,0.12)',
         animation: 'headerFadeIn 0.6s ease-out 2.0s both',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'linear-gradient(135deg, #c8965c 0%, #a07535 100%)',
-            fontSize: '0.8rem', fontWeight: 700, color: '#fff', letterSpacing: '0.04em',
-            boxShadow: '0 2px 10px rgba(160,120,60,0.38)',
-          }}>IS</div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           <span style={{
             fontFamily: 'var(--font-display)', fontSize: '1.1rem',
             fontWeight: 500, letterSpacing: '0.07em', color: 'var(--color-text)',
           }}>
-            Ironsite
+            Archvision
           </span>
         </div>
 
@@ -217,10 +210,10 @@ export default function LandingPage() {
         {/* Columns + center hero content */}
         <div style={{
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          width: '100%', maxWidth: 900,
+          width: '100%', maxWidth: 1320,
           padding: '0 2rem',
           position: 'relative', zIndex: 1,
-          gap: 0,
+          gap: 'clamp(0.5rem, 3vw, 2.5rem)',
         }}>
           {/* Left column — starts at center, slides left */}
           <div
@@ -232,7 +225,7 @@ export default function LandingPage() {
 
           {/* Center hero content — fades in after pillars open */}
           <div className="scroll-content" style={{
-            textAlign: 'center', flex: 1, maxWidth: 480,
+            textAlign: 'center', flex: '1 1 700px', maxWidth: 800,
             margin: '0 auto', paddingBottom: '2.5rem',
             paddingLeft: '2rem', paddingRight: '2rem',
           }}>
@@ -259,10 +252,11 @@ export default function LandingPage() {
             {/* Brand name */}
             <h1 style={{
               fontFamily: 'var(--font-display)', fontWeight: 300,
-              fontSize: 'clamp(2.8rem, 6.5vw, 5rem)', letterSpacing: '0.22em',
+              fontSize: 'clamp(2.3rem, 6vw, 5.6rem)', letterSpacing: '0.14em',
+              lineHeight: 0.95, whiteSpace: 'nowrap',
               color: 'var(--color-text)', margin: '0 0 0.3rem',
             }}>
-              IRONSITE
+              ARCHVISION
             </h1>
 
             {/* Gold rule */}
@@ -430,7 +424,7 @@ export default function LandingPage() {
           fontSize: '0.76rem', color: 'var(--color-text-muted)',
           letterSpacing: '0.08em', textTransform: 'uppercase',
         }}>
-          © 2026 Ironsite — AI Architecture Studio
+          © 2026 Archvision — AI Architecture Studio
         </p>
       </footer>
     </div>

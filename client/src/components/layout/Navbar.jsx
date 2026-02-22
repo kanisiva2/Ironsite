@@ -30,7 +30,7 @@ export default function Navbar() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#a07535] text-sm font-semibold text-white shadow-sm">
             IS
           </div>
-          <span className="font-display text-lg font-semibold tracking-wide text-text">Ironsite</span>
+          <span className="font-display text-lg font-semibold tracking-wide text-text">Archvision</span>
         </Link>
       </div>
 
