@@ -15,14 +15,24 @@ import toast from 'react-hot-toast'
 
 export default function WorkspacePage() {
   const { projectId, roomId } = useParams()
-  const { messages, streaming, loading: chatLoading, sendMessage, fetchMessages } = useChat(roomId, projectId)
-
   const [room, setRoom] = useState(null)
   const [roomLoading, setRoomLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('images')
   const [generatedImages, setGeneratedImages] = useState([])
   const [activeJobId, setActiveJobId] = useState(null)
   const [pipelineStatus, setPipelineStatus] = useState(null)
+
+  const handleGenerationStarted = useCallback((jobId) => {
+    setPipelineStatus('generating_2d')
+    setActiveJobId(jobId)
+    setActiveTab('images')
+  }, [])
+
+  const { messages, streaming, loading: chatLoading, sendMessage, fetchMessages } = useChat(
+    roomId,
+    projectId,
+    { onGenerationStarted: handleGenerationStarted }
+  )
 
   const { job: activeJob } = usePollJob(activeJobId)
 
@@ -53,7 +63,8 @@ export default function WorkspacePage() {
   useEffect(() => {
     if (activeJob?.status === 'completed') {
       if (activeJob.type === 'image_2d' && activeJob.output?.resultUrls) {
-        setGeneratedImages((prev) => [...prev, ...activeJob.output.resultUrls])
+        setGeneratedImages((prev) => [...new Set([...prev, ...activeJob.output.resultUrls])])
+        fetchMessages()
         setPipelineStatus(null)
       } else if (activeJob.type === 'model_3d') {
         fetchRoom()
@@ -69,7 +80,16 @@ export default function WorkspacePage() {
       setPipelineStatus(null)
       setActiveJobId(null)
     }
-  }, [activeJob, fetchRoom])
+  }, [activeJob, fetchMessages, fetchRoom])
+
+  useEffect(() => {
+    const urlsFromMessages = messages
+      .filter((msg) => msg.role === 'assistant')
+      .flatMap((msg) => msg.imageUrls || [])
+      .filter(Boolean)
+    if (urlsFromMessages.length === 0) return
+    setGeneratedImages((prev) => [...new Set([...prev, ...urlsFromMessages])])
+  }, [messages])
 
   const handleApproveImage = async (imageUrl) => {
     try {
@@ -126,6 +146,36 @@ export default function WorkspacePage() {
       toast.error('Failed to start 3D generation')
       setPipelineStatus(null)
     }
+  }
+
+  const handleDownloadArtifact = () => {
+    const artifactUrl = room?.artifactUrl
+    if (!artifactUrl) return
+
+    if (artifactUrl.startsWith('artifact://')) {
+      if (!room?.artifactContent) {
+        toast.error('Artifact content is unavailable')
+        return
+      }
+
+      const safeRoomName = (room?.name || 'room')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-_]/g, '')
+      const blob = new Blob([room.artifactContent], { type: 'text/markdown;charset=utf-8' })
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = `${safeRoomName || 'room'}-artifact.md`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(objectUrl)
+      return
+    }
+
+    window.open(artifactUrl, '_blank', 'noopener,noreferrer')
   }
 
   if (roomLoading) {
@@ -232,14 +282,12 @@ export default function WorkspacePage() {
             )}
 
             {room?.artifactUrl && (
-              <a
-                href={room.artifactUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={handleDownloadArtifact}
                 className="ml-auto text-sm text-primary transition-colors hover:text-primary-hover"
               >
                 Download Artifact
-              </a>
+              </button>
             )}
           </div>
         </div>

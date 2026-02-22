@@ -1,7 +1,11 @@
 import logging
+from urllib.parse import quote
+from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from firebase_admin import storage
 
+from app.config import settings
 from app.dependencies import get_current_user
 from app.models.generation import GenerateArtifactRequest
 from app.services import firestore as fs
@@ -13,9 +17,36 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/generate", tags=["generation"])
 
 
+def _upload_artifact_to_firebase(artifact_content: str, room_id: str) -> str:
+    bucket_name = settings.firebase_storage_bucket
+    if not bucket_name:
+        raise RuntimeError(
+            "FIREBASE_STORAGE_BUCKET is not configured. "
+            "Set it in server/.env so artifacts can be downloaded."
+        )
+
+    object_path = "artifacts/%s/%s.md" % (room_id, uuid4().hex)
+    token = uuid4().hex
+
+    bucket = storage.bucket(bucket_name)
+    blob = bucket.blob(object_path)
+    blob.metadata = {"firebaseStorageDownloadTokens": token}
+    blob.upload_from_string(artifact_content, content_type="text/markdown; charset=utf-8")
+
+    encoded_path = quote(object_path, safe="")
+    return (
+        "https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media&token=%s"
+        % (bucket.name, encoded_path, token)
+    )
+
+
 async def _run_artifact_generation(job_id, project_id, room_id):
     """Background task: compile conversation + images -> artifact markdown."""
     try:
+        logger.info(
+            "Artifact generation job %s started (project=%s room=%s)",
+            job_id, project_id, room_id
+        )
         fs.update_generation_job(job_id, {"status": "processing"})
 
         messages = fs.get_messages(project_id, room_id)
@@ -32,16 +63,17 @@ async def _run_artifact_generation(job_id, project_id, room_id):
         artifact_md = await generate_artifact_content(
             conversation_summary, image_descriptions
         )
+        artifact_url = _upload_artifact_to_firebase(artifact_md, room_id)
 
         fs.update_room(project_id, room_id, {
-            "artifactUrl": "artifact://%s" % job_id,
+            "artifactUrl": artifact_url,
             "artifactContent": artifact_md,
             "status": "generating_3d",
         })
 
         fs.update_generation_job(job_id, {
             "status": "completed",
-            "output.resultUrls": ["artifact://%s" % job_id],
+            "output.resultUrls": [artifact_url],
         })
 
         fs.add_message(
@@ -51,7 +83,10 @@ async def _run_artifact_generation(job_id, project_id, room_id):
             metadata={"type": "artifact", "generationId": job_id},
         )
 
-        logger.info("Artifact generation job %s completed", job_id)
+        logger.info(
+            "Artifact generation job %s completed with download URL",
+            job_id
+        )
 
     except Exception as e:
         logger.error("Artifact generation job %s failed: %s", job_id, e)

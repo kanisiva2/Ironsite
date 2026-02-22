@@ -6,9 +6,11 @@ class Settings(BaseSettings):
 
     # Firebase
     firebase_service_account_path: str = "serviceAccountKey.json"
+    firebase_storage_bucket: str = ""
 
     # Gemini (also used for Nano Banana image generation)
     gemini_api_key: str = ""
+    gemini_image_model: str = "nano-banana-pro-preview"
 
     # World Labs
     worldlabs_api_key: str = ""
