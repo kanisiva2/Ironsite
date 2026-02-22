@@ -5,6 +5,7 @@ export default function StatusIndicator({ status }) {
     thinking: { text: 'Thinking...', color: 'bg-primary' },
     generating_2d: { text: 'Generating image...', color: 'bg-warning' },
     generating_artifact: { text: 'Preparing your spec...', color: 'bg-warning' },
+    generating_zoning: { text: 'Creating zoning report...', color: 'bg-warning' },
     generating_3d: { text: 'Building 3D environment...', color: 'bg-warning' },
     ready: { text: 'Ready', color: 'bg-success' },
   }

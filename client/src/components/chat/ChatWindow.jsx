@@ -11,14 +11,14 @@ export default function ChatWindow({ messages, loading, streaming }) {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-5">
+    <div className="h-full min-h-0 flex-1 overflow-y-auto p-5">
       {messages.length === 0 ? (
         <div className="flex h-full flex-col items-center justify-center p-8 text-center">
           <div

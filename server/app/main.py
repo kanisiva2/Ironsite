@@ -7,7 +7,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import projects, rooms, chat, generate_2d, generate_artifact, generate_3d, messages
+from app.routers import (
+    projects,
+    rooms,
+    chat,
+    generate_2d,
+    generate_3d,
+    generate_zoning,
+    messages,
+)
 
 
 @asynccontextmanager
@@ -38,8 +46,8 @@ app.include_router(rooms.router)
 app.include_router(messages.router)
 app.include_router(chat.router)
 app.include_router(generate_2d.router)
-app.include_router(generate_artifact.router)
 app.include_router(generate_3d.router)
+app.include_router(generate_zoning.router)
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),

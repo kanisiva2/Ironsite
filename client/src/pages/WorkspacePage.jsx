@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { HiChevronRight } from 'react-icons/hi'
 import Navbar from '../components/layout/Navbar'
@@ -13,19 +13,6 @@ import usePollJob from '../hooks/usePollJob'
 import api from '../services/api'
 import toast from 'react-hot-toast'
 
-const THREE_MODEL_ESTIMATE_MS = {
-  'Marble 0.1-mini': 45 * 1000,
-  'Marble 0.1-plus': 10 * 60 * 1000,
-}
-
-function formatEta(ms) {
-  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  if (minutes <= 0) return `${seconds}s`
-  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`
-}
-
 export default function WorkspacePage() {
   const { projectId, roomId } = useParams()
   const [projectName, setProjectName] = useState('')
@@ -35,9 +22,6 @@ export default function WorkspacePage() {
   const [generatedImages, setGeneratedImages] = useState([])
   const [activeJobId, setActiveJobId] = useState(null)
   const [pipelineStatus, setPipelineStatus] = useState(null)
-  const [threeProgress, setThreeProgress] = useState(null)
-  const [timeNow, setTimeNow] = useState(() => Date.now())
-  const pendingDownloadRef = useRef(false)
 
   const handleGenerationStarted = useCallback((jobId) => {
     setPipelineStatus('generating_2d')
@@ -53,24 +37,15 @@ export default function WorkspacePage() {
 
   const { job: activeJob } = usePollJob(activeJobId)
 
-  const threeProgressUi = useMemo(() => {
-    if (pipelineStatus !== 'generating_3d' || !threeProgress) return null
-
-    const elapsedMs = Math.max(0, timeNow - threeProgress.startedAt)
-    const estimatedMs = Math.max(1, threeProgress.estimatedMs)
-    const modelCompleted = activeJob?.type === 'model_3d' && activeJob?.status === 'completed'
-    const progress = modelCompleted ? 100 : Math.min(95, (elapsedMs / estimatedMs) * 100)
-    const remainingMs = modelCompleted ? 0 : Math.max(0, estimatedMs - elapsedMs)
-    const isOverEstimate = !modelCompleted && elapsedMs > estimatedMs
-
-    return {
-      model: threeProgress.model,
-      progress,
-      remainingMs,
-      isOverEstimate,
-      modelCompleted,
+  const fetchProject = useCallback(async () => {
+    try {
+      const { data } = await api.get(`/projects/${projectId}`)
+      const nextProject = data.project || data
+      setProjectName(nextProject?.name || '')
+    } catch {
+      // handled elsewhere by room fetch / page navigation
     }
-  }, [pipelineStatus, threeProgress, timeNow, activeJob])
+  }, [projectId])
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -100,12 +75,10 @@ export default function WorkspacePage() {
   }, [projectId, roomId])
 
   useEffect(() => {
-    api.get(`/projects/${projectId}`).then(({ data }) => {
-      setProjectName(data.project?.name || data.name || '')
-    }).catch(() => {})
+    fetchProject()
     fetchRoom()
     fetchMessages()
-  }, [fetchRoom, fetchMessages, projectId])
+  }, [fetchProject, fetchRoom, fetchMessages])
 
   useEffect(() => {
     if (activeJob?.status === 'completed') {
@@ -117,36 +90,14 @@ export default function WorkspacePage() {
         fetchRoom()
         setActiveTab('3d')
         setPipelineStatus(null)
-        setThreeProgress(null)
-      } else if (activeJob.type === 'artifact') {
-        if (pendingDownloadRef.current) {
-          pendingDownloadRef.current = false
-          fetchRoom().then((updatedRoom) => { if (updatedRoom) performDownload(updatedRoom) })
-        } else {
-          fetchRoom()
-        }
-        setPipelineStatus(null)
       }
       setActiveJobId(null)
     } else if (activeJob?.status === 'failed') {
       toast.error(activeJob.output?.error || 'Generation failed')
-      if (activeJob.type === 'model_3d') {
-        setThreeProgress(null)
-      }
       setPipelineStatus(null)
       setActiveJobId(null)
     }
   }, [activeJob, fetchMessages, fetchRoom])
-
-  useEffect(() => {
-    if (pipelineStatus !== 'generating_3d' || !threeProgress) return undefined
-
-    const timer = setInterval(() => {
-      setTimeNow(Date.now())
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [pipelineStatus, threeProgress])
 
   useEffect(() => {
     const urlsFromMessages = messages
@@ -192,62 +143,14 @@ export default function WorkspacePage() {
     }
   }
 
-  const performDownload = (roomData) => {
-    const artifactUrl = roomData?.artifactUrl
-    if (!artifactUrl) return
-
-    if (artifactUrl.startsWith('artifact://')) {
-      if (!roomData?.artifactContent) {
-        toast.error('Spec content is unavailable')
-        return
-      }
-      const safeRoomName = (roomData?.name || 'room')
-        .trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')
-      const blob = new Blob([roomData.artifactContent], { type: 'text/markdown;charset=utf-8' })
-      const objectUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = objectUrl
-      link.download = `${safeRoomName || 'room'}-spec.md`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(objectUrl)
-      return
-    }
-    window.open(artifactUrl, '_blank', 'noopener,noreferrer')
-  }
-
-  const handleDownloadSpec = async () => {
-    if (room?.artifactUrl) {
-      performDownload(room)
-      return
-    }
-    pendingDownloadRef.current = true
-    try {
-      setPipelineStatus('generating_artifact')
-      const { data } = await api.post('/generate/artifact', { roomId, projectId })
-      setActiveJobId(data.jobId)
-    } catch {
-      toast.error('Failed to generate spec')
-      setPipelineStatus(null)
-      pendingDownloadRef.current = false
-    }
-  }
-
   const handleGenerate3D = async (model = 'Marble 0.1-plus') => {
     try {
       setPipelineStatus('generating_3d')
       const { data } = await api.post('/generate/3d', { roomId, projectId, model })
       setActiveJobId(data.jobId)
-      setThreeProgress({
-        model,
-        startedAt: Date.now(),
-        estimatedMs: THREE_MODEL_ESTIMATE_MS[model] || THREE_MODEL_ESTIMATE_MS['Marble 0.1-plus'],
-      })
     } catch {
       toast.error('Failed to start 3D generation')
       setPipelineStatus(null)
-      setThreeProgress(null)
     }
   }
 
@@ -260,7 +163,6 @@ export default function WorkspacePage() {
   }
 
   const approvedCount = room?.approved2dImageUrls?.length || 0
-  const hasArtifact = !!room?.artifactUrl
   const has3dScene = !!(
     room?.worldLabs?.worldId ||
     room?.worldLabs?.marbleUrl ||
@@ -305,6 +207,7 @@ export default function WorkspacePage() {
             >
               Renderings {generatedImages.length > 0 && `(${generatedImages.length})`}
             </button>
+
             <button
               onClick={() => setActiveTab('3d')}
               className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
@@ -345,40 +248,17 @@ export default function WorkspacePage() {
             )}
           </div>
 
-          {/* Generation controls */}
-          <div className="border-t border-border bg-surface-alt px-4 py-3">
-            {threeProgressUi && (
-              <div className="mb-3 rounded-lg border border-border bg-surface px-3 py-2">
-                <div className="mb-1.5 flex items-center justify-between text-xs text-text-muted">
-                  <span>
-                    Generating 3D ({threeProgressUi.model === 'Marble 0.1-mini' ? 'Quick model' : 'High-quality model'})
-                  </span>
-                  <span>
-                    {threeProgressUi.modelCompleted
-                      ? 'Complete'
-                      : threeProgressUi.isOverEstimate
-                      ? 'Taking longer than expected'
-                      : `~${formatEta(threeProgressUi.remainingMs)} remaining`}
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-alt">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-500"
-                    style={{ width: `${threeProgressUi.progress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            <div className="flex items-center gap-3">
+          {/* Action buttons */}
+          <div className="flex items-center gap-3 border-t border-border bg-surface-alt px-4 py-3">
             <button
               onClick={() => handleGenerate3D('Marble 0.1-plus')}
-              disabled={!hasArtifact || pipelineStatus}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-40"
+              disabled={approvedCount === 0 || pipelineStatus}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-40"
             >
               {pipelineStatus === 'generating_3d' ? 'Rendering…' : 'Final Render'}
             </button>
 
-            {hasArtifact && (
+            {approvedCount > 0 && (
               <button
                 onClick={() => handleGenerate3D('Marble 0.1-mini')}
                 disabled={pipelineStatus}
@@ -387,17 +267,6 @@ export default function WorkspacePage() {
                 Quick 3D
               </button>
             )}
-
-            {approvedCount > 0 && (
-              <button
-                onClick={handleDownloadSpec}
-                disabled={!!pipelineStatus}
-                className="ml-auto flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/40 hover:text-text disabled:opacity-40"
-              >
-                {pipelineStatus === 'generating_artifact' ? 'Generating Spec…' : 'Download Spec'}
-              </button>
-            )}
-            </div>
           </div>
         </div>
       </div>
