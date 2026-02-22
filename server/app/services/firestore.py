@@ -71,6 +71,27 @@ def update_project(project_id: str, updates: dict) -> Optional[dict]:
     return _doc_to_dict(ref.get())
 
 
+def _sync_project_previews(db, project_id: str) -> None:
+    """Collect up to 2 preview images from approved room images and store on project."""
+    rooms = (
+        db.collection("projects")
+        .document(project_id)
+        .collection("rooms")
+        .order_by("createdAt")
+        .stream()
+    )
+    preview_urls = []
+    for room in rooms:
+        approved = (room.to_dict().get("approved2dImageUrls") or [])
+        if approved:
+            preview_urls.append(approved[0])
+        if len(preview_urls) >= 2:
+            break
+    db.collection("projects").document(project_id).update({
+        "previewImageUrls": preview_urls,
+    })
+
+
 def delete_project(project_id: str) -> bool:
     db = get_db()
     ref = db.collection("projects").document(project_id)
@@ -155,6 +176,8 @@ def update_room(project_id: str, room_id: str, updates: dict) -> Optional[dict]:
         return None
     updates["updatedAt"] = firestore.SERVER_TIMESTAMP
     ref.update(updates)
+    if "approved2dImageUrls" in updates:
+        _sync_project_previews(db, project_id)
     return _doc_to_dict(ref.get())
 
 
