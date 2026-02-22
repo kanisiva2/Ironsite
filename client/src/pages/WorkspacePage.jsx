@@ -90,6 +90,11 @@ export default function WorkspacePage() {
         fetchRoom()
         setActiveTab('3d')
         setPipelineStatus(null)
+      } else if (activeJob.type === 'artifact') {
+        fetchRoom()
+        fetchMessages()
+        setPipelineStatus(null)
+        toast.success('Spec generated!')
       }
       setActiveJobId(null)
     } else if (activeJob?.status === 'failed') {
@@ -150,6 +155,17 @@ export default function WorkspacePage() {
       setActiveJobId(data.jobId)
     } catch {
       toast.error('Failed to start 3D generation')
+      setPipelineStatus(null)
+    }
+  }
+
+  const handleGenerateSpec = async () => {
+    try {
+      setPipelineStatus('generating_spec')
+      const { data } = await api.post('/generate/artifact', { roomId, projectId })
+      setActiveJobId(data.jobId)
+    } catch {
+      toast.error('Failed to start spec generation')
       setPipelineStatus(null)
     }
   }
@@ -254,21 +270,27 @@ export default function WorkspacePage() {
           <div className="flex items-center gap-3 border-t border-border bg-surface-alt px-4 py-3">
             <button
               onClick={() => handleGenerate3D('Marble 0.1-plus')}
-              disabled={approvedCount === 0 || pipelineStatus}
+              disabled={approvedCount === 0 || !!pipelineStatus}
               className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-40"
             >
               {pipelineStatus === 'generating_3d' ? 'Rendering…' : 'Final Render'}
             </button>
 
-            {approvedCount > 0 && (
-              <button
-                onClick={() => handleGenerate3D('Marble 0.1-mini')}
-                disabled={pipelineStatus}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/40 hover:text-text disabled:opacity-40"
-              >
-                Quick 3D
-              </button>
-            )}
+            <button
+              onClick={() => handleGenerate3D('Marble 0.1-mini')}
+              disabled={approvedCount === 0 || !!pipelineStatus}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/40 hover:text-text disabled:opacity-40"
+            >
+              Quick 3D
+            </button>
+
+            <button
+              onClick={handleGenerateSpec}
+              disabled={messages.length === 0 || !!pipelineStatus}
+              className="ml-auto rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/40 hover:text-text disabled:opacity-40"
+            >
+              {pipelineStatus === 'generating_spec' ? 'Generating…' : 'Generate Spec'}
+            </button>
           </div>
         </div>
       </div>

@@ -173,13 +173,6 @@ async def generate_artifact(body: GenerateArtifactRequest,
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
-    approved = room.get("approved2dImageUrls", [])
-    if not approved:
-        raise HTTPException(
-            status_code=400,
-            detail="Approve at least one 2D image before generating an artifact",
-        )
-
     job = fs.create_generation_job(
         room_id=body.roomId,
         project_id=body.projectId,
