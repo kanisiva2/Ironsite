@@ -7,6 +7,7 @@ from firebase_admin import firestore
 logger = logging.getLogger(__name__)
 
 _db = None
+PROJECT_CHAT_ROOM_ID_PREFIX = "__project_chat__:"
 
 
 def get_db():
@@ -22,6 +23,20 @@ def _doc_to_dict(doc) -> Optional[dict]:
     data = doc.to_dict()
     data["id"] = doc.id
     return data
+
+
+def make_project_chat_room_id(scope: str) -> str:
+    return f"{PROJECT_CHAT_ROOM_ID_PREFIX}{scope}"
+
+
+def is_project_chat_room_id(room_id: Optional[str]) -> bool:
+    return bool(room_id and str(room_id).startswith(PROJECT_CHAT_ROOM_ID_PREFIX))
+
+
+def get_project_chat_scope_from_room_id(room_id: str) -> Optional[str]:
+    if not is_project_chat_room_id(room_id):
+        return None
+    return str(room_id)[len(PROJECT_CHAT_ROOM_ID_PREFIX):] or None
 
 
 # ── Projects ────────────────────────────────────────────────────────────────
@@ -97,6 +112,12 @@ def delete_project(project_id: str) -> bool:
         for msg in msgs:
             msg.reference.delete()
         room.reference.delete()
+    report_chats = ref.collection("report_chats").stream()
+    for chat_doc in report_chats:
+        msgs = chat_doc.reference.collection("messages").stream()
+        for msg in msgs:
+            msg.reference.delete()
+        chat_doc.reference.delete()
     ref.delete()
     return True
 
@@ -226,6 +247,51 @@ def get_messages(project_id: str, room_id: str) -> List[dict]:
         .document(project_id)
         .collection("rooms")
         .document(room_id)
+        .collection("messages")
+        .order_by("createdAt")
+        .stream()
+    )
+    return [_doc_to_dict(d) for d in docs]
+
+
+def add_project_chat_message(project_id: str, scope: str, role: str, content: str,
+                             image_urls: Optional[List[str]] = None,
+                             metadata: Optional[dict] = None) -> dict:
+    db = get_db()
+    room_id = make_project_chat_room_id(scope)
+    ref = (
+        db.collection("projects")
+        .document(project_id)
+        .collection("report_chats")
+        .document(scope)
+        .collection("messages")
+        .document()
+    )
+    data = {
+        "roomId": room_id,
+        "role": role,
+        "content": content,
+        "imageUrls": image_urls or [],
+        "metadata": {
+            "type": "project_report_chat",
+            "scope": scope,
+            **(metadata or {}),
+        },
+        "createdAt": firestore.SERVER_TIMESTAMP,
+    }
+    ref.set(data)
+    data["id"] = ref.id
+    data["createdAt"] = datetime.utcnow().isoformat()
+    return data
+
+
+def get_project_chat_messages(project_id: str, scope: str) -> List[dict]:
+    db = get_db()
+    docs = (
+        db.collection("projects")
+        .document(project_id)
+        .collection("report_chats")
+        .document(scope)
         .collection("messages")
         .order_by("createdAt")
         .stream()

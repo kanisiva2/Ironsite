@@ -146,6 +146,21 @@ function deriveZoningMissingItems({ zoningReport, zoningPreflight }) {
   return [...new Set(derived)]
 }
 
+const WHOLE_HOME_REPORT_TYPES = {
+  zoning: {
+    label: 'Zoning',
+    chatRoomId: '__project_chat__:whole_home_zoning_report',
+    chatTitle: 'Whole-Home Zoning Chat',
+    chatDescription: 'Dedicated whole-home zoning chat. Separate from room design chats.',
+  },
+  technical_info: {
+    label: 'Technical Info',
+    chatRoomId: '__project_chat__:whole_home_technical_info_report',
+    chatTitle: 'Whole-Home Technical Info Chat',
+    chatDescription: 'Collect whole-home technical requirements here without mixing room chat history.',
+  },
+}
+
 export default function ProjectPage() {
   const { projectId } = useParams()
   const { rooms, loading, error, createRoom, deleteRoom } = useRooms(projectId)
@@ -157,16 +172,17 @@ export default function ProjectPage() {
   const [zoningJobId, setZoningJobId] = useState(null)
   const [zoningBusy, setZoningBusy] = useState(false)
   const [showWholeHomeReport, setShowWholeHomeReport] = useState(false)
-  const [reportChatRoomId, setReportChatRoomId] = useState(null)
+  const [wholeHomeReportType, setWholeHomeReportType] = useState('zoning')
 
   const { job: zoningJob } = usePollJob(zoningJobId)
+  const reportChatRoomId = WHOLE_HOME_REPORT_TYPES[wholeHomeReportType]?.chatRoomId
   const {
     messages: reportChatMessages,
     streaming: reportChatStreaming,
     loading: reportChatLoading,
     sendMessage: sendReportChatMessage,
     fetchMessages: fetchReportChatMessages,
-  } = useChat(reportChatRoomId, projectId)
+  } = useChat(reportChatRoomId, projectId, { enableImageToolActions: false })
 
   const fetchProject = useCallback(async () => {
     if (!projectId) return
@@ -221,17 +237,6 @@ export default function ProjectPage() {
     if (!projectId) return
     fetchProject().catch(() => {})
   }, [fetchProject, projectId])
-
-  useEffect(() => {
-    if (rooms.length === 0) {
-      setReportChatRoomId(null)
-      return
-    }
-    setReportChatRoomId((prev) => {
-      if (prev && rooms.some((room) => room.id === prev)) return prev
-      return rooms[0].id
-    })
-  }, [rooms])
 
   useEffect(() => {
     if (!showWholeHomeReport || !reportChatRoomId) return
@@ -327,11 +332,13 @@ export default function ProjectPage() {
           >
             <div>
               <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-text-muted">
-                Whole-Home Report
+                Whole-Home Reports
               </p>
-              <h2 className="text-xl text-text">Zoning Report</h2>
+              <h2 className="text-xl text-text">
+                {WHOLE_HOME_REPORT_TYPES[wholeHomeReportType]?.label || 'Whole-Home'} Report
+              </h2>
               <p className="mt-1 text-sm text-text-muted">
-                For homeowners and experts: use Archvision plus all room conversations to prepare and generate one home-level zoning report.
+                Use a dedicated whole-home chat for report-specific details, separate from room design conversations.
               </p>
             </div>
             <div className="flex items-center gap-3 pt-1">

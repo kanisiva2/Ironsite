@@ -4,7 +4,7 @@ import { getIdToken } from '../services/firebase'
 import toast from 'react-hot-toast'
 
 export default function useChat(roomId, projectId, options = {}) {
-  const { onGenerationStarted } = options
+  const { onGenerationStarted, enableImageToolActions = true } = options
   const [messages, setMessages] = useState([])
   const [streaming, setStreaming] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -108,7 +108,7 @@ export default function useChat(roomId, projectId, options = {}) {
                 const is2dAction =
                   actionType === 'generate_2d' || actionType === 'generate_2d_image'
 
-                if (is2dAction && !generationStarted) {
+                if (is2dAction && !generationStarted && enableImageToolActions) {
                   generationStarted = true
                   const actionPrompt = payload.action.args?.prompt || content
                   const referenceImageUrls = Array.isArray(imageUrls) ? imageUrls : []
@@ -128,6 +128,8 @@ export default function useChat(roomId, projectId, options = {}) {
                     generationStarted = false
                     toast.error(actionErr.response?.data?.detail || 'Failed to start 2D generation')
                   }
+                } else if (is2dAction && !enableImageToolActions) {
+                  toast('Image generation is disabled in this chat')
                 } else if (!is2dAction) {
                   toast.success(`Generating ${actionType}...`)
                 }
@@ -144,7 +146,7 @@ export default function useChat(roomId, projectId, options = {}) {
     } finally {
       setStreaming(false)
     }
-  }, [onGenerationStarted, projectId, roomId])
+  }, [enableImageToolActions, onGenerationStarted, projectId, roomId])
 
   const stopStreaming = useCallback(() => {
     if (abortRef.current) {

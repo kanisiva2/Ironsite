@@ -13,9 +13,12 @@ async def list_messages(project_id: str, room_id: str,
     if not project or project.get("userId") != uid:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    room = fs.get_room(project_id, room_id)
-    if not room:
-        raise HTTPException(status_code=404, detail="Room not found")
-
-    messages = fs.get_messages(project_id, room_id)
+    project_chat_scope = fs.get_project_chat_scope_from_room_id(room_id)
+    if project_chat_scope:
+        messages = fs.get_project_chat_messages(project_id, project_chat_scope)
+    else:
+        room = fs.get_room(project_id, room_id)
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
+        messages = fs.get_messages(project_id, room_id)
     return {"messages": messages}

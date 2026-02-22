@@ -195,6 +195,14 @@ def _build_zoning_report(project: dict) -> dict:
 
 def _collect_project_messages(project_id: str) -> List[dict]:
     messages = []
+    zoning_scope_messages = fs.get_project_chat_messages(project_id, "whole_home_zoning_report")
+    for msg in zoning_scope_messages:
+        msg_copy = dict(msg)
+        msg_copy["_roomId"] = fs.make_project_chat_room_id("whole_home_zoning_report")
+        msg_copy["_roomName"] = "Whole-Home Zoning Report"
+        msg_copy["_projectChatScope"] = "whole_home_zoning_report"
+        messages.append(msg_copy)
+
     for room in fs.get_rooms(project_id):
         room_id = room.get("id")
         if not room_id:

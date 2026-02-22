@@ -21,18 +21,28 @@ async def send_message(body: ChatMessageRequest,
     if not project or project.get("userId") != uid:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    room = fs.get_room(body.projectId, body.roomId)
-    if not room:
-        raise HTTPException(status_code=404, detail="Room not found")
+    project_chat_scope = fs.get_project_chat_scope_from_room_id(body.roomId)
+    if project_chat_scope:
+        fs.add_project_chat_message(
+            body.projectId,
+            project_chat_scope,
+            role="user",
+            content=body.content,
+            image_urls=body.imageUrls,
+        )
+        history = fs.get_project_chat_messages(body.projectId, project_chat_scope)
+    else:
+        room = fs.get_room(body.projectId, body.roomId)
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
 
-    fs.add_message(
-        body.projectId, body.roomId,
-        role="user",
-        content=body.content,
-        image_urls=body.imageUrls,
-    )
-
-    history = fs.get_messages(body.projectId, body.roomId)
+        fs.add_message(
+            body.projectId, body.roomId,
+            role="user",
+            content=body.content,
+            image_urls=body.imageUrls,
+        )
+        history = fs.get_messages(body.projectId, body.roomId)
 
     async def event_generator():
         full_text = ""
@@ -59,12 +69,21 @@ async def send_message(body: ChatMessageRequest,
                 }
 
             elif chunk["type"] == "done":
-                assistant_msg = fs.add_message(
-                    body.projectId, body.roomId,
-                    role="assistant",
-                    content=full_text,
-                    metadata={"type": "text"},
-                )
+                if project_chat_scope:
+                    assistant_msg = fs.add_project_chat_message(
+                        body.projectId,
+                        project_chat_scope,
+                        role="assistant",
+                        content=full_text,
+                        metadata={"type": "text"},
+                    )
+                else:
+                    assistant_msg = fs.add_message(
+                        body.projectId, body.roomId,
+                        role="assistant",
+                        content=full_text,
+                        metadata={"type": "text"},
+                    )
                 yield {
                     "event": "done",
                     "data": json.dumps({
