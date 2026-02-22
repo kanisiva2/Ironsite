@@ -28,3 +28,7 @@ class GenerateZoningReportRequest(BaseModel):
 
 class GenerateProjectZoningReportRequest(BaseModel):
     projectId: str
+
+
+class GenerateProjectTechnicalInfoReportRequest(BaseModel):
+    projectId: str

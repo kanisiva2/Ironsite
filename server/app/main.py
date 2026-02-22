@@ -12,7 +12,6 @@ from app.routers import (
     rooms,
     chat,
     generate_2d,
-    generate_artifact,
     generate_3d,
     generate_zoning,
     messages,
@@ -47,7 +46,6 @@ app.include_router(rooms.router)
 app.include_router(messages.router)
 app.include_router(chat.router)
 app.include_router(generate_2d.router)
-app.include_router(generate_artifact.router)
 app.include_router(generate_3d.router)
 app.include_router(generate_zoning.router)
 

@@ -19,6 +19,7 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 _model = None
+_scoped_chat_models = {}
 _client = None
 _backend = None
 _rest_model_cache = None
@@ -125,6 +126,70 @@ def _get_client():
 
 def _load_prompt(filename: str) -> str:
     return (_PROMPTS_DIR / filename).read_text()
+
+
+def _report_chat_system_instruction(chat_scope: Optional[str]) -> str:
+    if chat_scope == "whole_home_zoning_report":
+        return (
+            "You are Archvision's whole-home zoning report assistant. "
+            "Your job is to help collect and confirm zoning/site inputs for a zoning compliance report. "
+            "Do not pivot into interior design, room styling, or creative design suggestions unless the user explicitly asks. "
+            "Be concise and practical. Focus on site address, parcel ID, zoning district, setbacks, height limits, lot area, "
+            "lot coverage limits, and proposed building dimensions/setbacks. "
+            "If the user provides enough information, say the zoning report preflight/PDF is ready. "
+            "If information is missing, list only the missing fields and ask one focused follow-up question."
+        )
+    if chat_scope == "whole_home_technical_info_report":
+        return (
+            "You are Archvision's whole-home technical information assistant. "
+            "Your job is to collect and organize whole-home technical requirements and constraints across rooms. "
+            "Do not pivot into interior design brainstorming or room styling unless the user explicitly asks. "
+            "Focus on systems and constraints such as structural conditions, HVAC, plumbing, electrical, accessibility, permits, "
+            "utility considerations, materials/spec preferences, and installation constraints. "
+            "Respond with a short acknowledgement, a clean summary of captured technical info, and the next missing detail to confirm."
+        )
+    return _load_prompt("system_consultant.txt")
+
+
+def _report_chat_reply_behavior_suffix(chat_scope: Optional[str]) -> str:
+    if chat_scope == "whole_home_zoning_report":
+        return (
+            "Respond as a whole-home zoning assistant. Prefer: (1) brief confirmation, (2) extracted zoning values, "
+            "(3) missing items or readiness. Do not ask which room to design next."
+        )
+    if chat_scope == "whole_home_technical_info_report":
+        return (
+            "Respond as a whole-home technical info assistant. Prefer: (1) brief confirmation, (2) structured summary of captured "
+            "technical constraints, (3) one next question if needed. Do not suggest room design unless asked."
+        )
+    return (
+        "Respond helpfully as the AI architect. "
+        "If you want to suggest generating an image, explain it in text."
+    )
+
+
+def _get_scoped_legacy_chat_model(chat_scope: Optional[str], allow_tools: bool):
+    if chat_scope is None and allow_tools:
+        return _get_model()
+
+    key = (chat_scope or "__default__", bool(allow_tools))
+    if key in _scoped_chat_models:
+        return _scoped_chat_models[key]
+
+    model_cls = _legacy_generative_model_class()
+    if model_cls is None:
+        raise RuntimeError(
+            "Installed google.generativeai package does not expose GenerativeModel"
+        )
+    genai.configure(api_key=settings.gemini_api_key)
+    kwargs = {
+        "system_instruction": _report_chat_system_instruction(chat_scope),
+    }
+    if allow_tools:
+        kwargs["tools"] = [GENERATE_2D_TOOL]
+    model = model_cls(GEMINI_PRIMARY_MODEL, **kwargs)
+    _scoped_chat_models[key] = model
+    return model
 
 
 def _rest_api_versions() -> List[str]:
@@ -356,7 +421,7 @@ def _generate_text(prompt: str, system_instruction: Optional[str] = None) -> str
     return _response_text(response)
 
 
-async def stream_chat(messages: List[dict]) -> AsyncGenerator:
+async def stream_chat(messages: List[dict], chat_scope: Optional[str] = None) -> AsyncGenerator:
     """
     Stream a chat response from Gemini.
 
@@ -373,7 +438,8 @@ async def stream_chat(messages: List[dict]) -> AsyncGenerator:
         return
 
     if backend == "legacy":
-        model = _get_model()
+        allow_tools = not chat_scope
+        model = _get_scoped_legacy_chat_model(chat_scope, allow_tools=allow_tools)
         history = _format_history(messages[:-1]) if len(messages) > 1 else []
 
         chat = model.start_chat(history=history)
@@ -410,7 +476,7 @@ async def stream_chat(messages: List[dict]) -> AsyncGenerator:
 
     # Fallback for newer SDKs or REST: text-only streaming (no tool calling).
     try:
-        system_instruction = _load_prompt("system_consultant.txt")
+        system_instruction = _report_chat_system_instruction(chat_scope)
         transcript = _messages_to_plain_transcript(messages[:-1]) if len(messages) > 1 else ""
         latest_content = messages[-1].get("content", "") or ""
         for url in (messages[-1].get("imageUrls") or []):
@@ -420,9 +486,13 @@ async def stream_chat(messages: List[dict]) -> AsyncGenerator:
             "System instruction:\n%s\n\n"
             "Conversation history:\n%s\n\n"
             "Latest user message:\n%s\n\n"
-            "Respond helpfully as the AI architect. "
-            "If you want to suggest generating an image, explain it in text."
-        ) % (system_instruction, transcript or "(none)", latest_content)
+            "%s"
+        ) % (
+            system_instruction,
+            transcript or "(none)",
+            latest_content,
+            _report_chat_reply_behavior_suffix(chat_scope),
+        )
 
         full_text = ""
         if backend == "rest":

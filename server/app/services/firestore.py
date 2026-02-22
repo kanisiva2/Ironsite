@@ -64,7 +64,7 @@ def create_project(user_id: str, name: str, description: str = "") -> dict:
                 "setbacksFt": {"front": None, "rear": None, "left": None, "right": None},
             },
         },
-        "regulatory": {"zoning": None},
+        "regulatory": {"zoning": None, "technicalInfo": None},
         "createdAt": firestore.SERVER_TIMESTAMP,
         "updatedAt": firestore.SERVER_TIMESTAMP,
     }

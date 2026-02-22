@@ -48,7 +48,7 @@ async def send_message(body: ChatMessageRequest,
         full_text = ""
         function_call_data = None
 
-        async for chunk in stream_chat(history):
+        async for chunk in stream_chat(history, chat_scope=project_chat_scope):
             if chunk["type"] == "token":
                 full_text += chunk["text"]
                 yield {

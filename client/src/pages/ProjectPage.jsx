@@ -119,6 +119,7 @@ function formatStatusLabel(status) {
 
 function statusBadgeClasses(status) {
   if (status === 'pass') return 'border border-success/30 bg-success/10 text-success'
+  if (status === 'ready') return 'border border-success/30 bg-success/10 text-success'
   if (status === 'fail') return 'border border-danger/30 bg-danger/10 text-danger'
   if (status === 'needs_info') return 'border border-warning/30 bg-warning/10 text-warning'
   return 'border border-border bg-surface-alt text-text-muted'
@@ -169,12 +170,17 @@ export default function ProjectPage() {
   const [projectName, setProjectName] = useState('')
   const [zoningPreflight, setZoningPreflight] = useState(null)
   const [preflightLoading, setPreflightLoading] = useState(false)
+  const [technicalInfoPreflight, setTechnicalInfoPreflight] = useState(null)
+  const [technicalInfoPreflightLoading, setTechnicalInfoPreflightLoading] = useState(false)
   const [zoningJobId, setZoningJobId] = useState(null)
   const [zoningBusy, setZoningBusy] = useState(false)
+  const [technicalInfoJobId, setTechnicalInfoJobId] = useState(null)
+  const [technicalInfoBusy, setTechnicalInfoBusy] = useState(false)
   const [showWholeHomeReport, setShowWholeHomeReport] = useState(false)
   const [wholeHomeReportType, setWholeHomeReportType] = useState('zoning')
 
   const { job: zoningJob } = usePollJob(zoningJobId)
+  const { job: technicalInfoJob } = usePollJob(technicalInfoJobId)
   const reportChatRoomId = WHOLE_HOME_REPORT_TYPES[wholeHomeReportType]?.chatRoomId
   const {
     messages: reportChatMessages,
@@ -233,6 +239,44 @@ export default function ProjectPage() {
     return true
   }, [])
 
+  const downloadTechnicalInfoPdf = useCallback(async (technicalInfo) => {
+    if (!technicalInfo) return false
+    const pdfUrl = technicalInfo.reportPdfUrl
+    if (pdfUrl && !pdfUrl.startsWith('technical-info://')) {
+      try {
+        const response = await fetch(pdfUrl)
+        if (!response.ok) throw new Error('Failed to fetch PDF')
+        const blob = await response.blob()
+        const objectUrl = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = objectUrl
+        link.download = 'technical_info_report.pdf'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(objectUrl)
+        return true
+      } catch {
+        window.open(pdfUrl, '_blank', 'noopener,noreferrer')
+        return true
+      }
+    }
+    if (!technicalInfo.reportPdfBase64) return false
+    const binary = atob(technicalInfo.reportPdfBase64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: 'application/pdf' })
+    const objectUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = 'technical_info_report.pdf'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(objectUrl)
+    return true
+  }, [])
+
   useEffect(() => {
     if (!projectId) return
     fetchProject().catch(() => {})
@@ -259,13 +303,41 @@ export default function ProjectPage() {
     }
   }, [zoningJob, fetchProject, downloadZoningPdf])
 
+  useEffect(() => {
+    if (technicalInfoJob?.status === 'completed' && technicalInfoJob?.type === 'technical_info_report') {
+      ;(async () => {
+        setTechnicalInfoBusy(false)
+        setTechnicalInfoJobId(null)
+        const nextProject = await fetchProject().catch(() => null)
+        const didDownload = await downloadTechnicalInfoPdf(nextProject?.regulatory?.technicalInfo)
+        toast.success(didDownload ? 'Technical info report created. PDF download started.' : 'Technical info report created')
+      })()
+    } else if (technicalInfoJob?.status === 'failed') {
+      setTechnicalInfoBusy(false)
+      setTechnicalInfoJobId(null)
+      toast.error(technicalInfoJob.output?.error || 'Failed to create technical info report')
+    }
+  }, [technicalInfoJob, fetchProject, downloadTechnicalInfoPdf])
+
   const zoningReport = project?.regulatory?.zoning
+  const technicalInfoReport = project?.regulatory?.technicalInfo
   const zoningMissingItems = deriveZoningMissingItems({ zoningReport, zoningPreflight })
+  const technicalInfoMissingItems = [
+    ...new Set([
+      ...(technicalInfoPreflight?.missingQuestions || []),
+      ...(technicalInfoReport?.inputAcquisition?.missingQuestions || []),
+    ].map((q) => String(q).trim()).filter(Boolean)),
+  ]
   const selectedWholeHomeReport = WHOLE_HOME_REPORT_TYPES[wholeHomeReportType] || WHOLE_HOME_REPORT_TYPES.zoning
   const zoningDisplayStatus =
     zoningPreflight?.predictedComplianceStatus ||
     zoningReport?.status ||
     zoningReport?.reportJson?.complianceStatus ||
+    null
+  const technicalInfoDisplayStatus =
+    technicalInfoPreflight?.predictedStatus ||
+    technicalInfoReport?.status ||
+    technicalInfoReport?.reportJson?.status ||
     null
 
   const handleCheckZoningMissing = async () => {
@@ -293,6 +365,34 @@ export default function ProjectPage() {
     } catch (err) {
       setZoningBusy(false)
       toast.error(err.response?.data?.detail || 'Failed to start zoning report generation')
+    }
+  }
+
+  const handleGenerateProjectTechnicalInfo = async () => {
+    if (!projectId) return
+    try {
+      setTechnicalInfoBusy(true)
+      setShowWholeHomeReport(true)
+      const { data } = await api.post('/generate/project-technical-info', { projectId })
+      setTechnicalInfoJobId(data.jobId)
+    } catch (err) {
+      setTechnicalInfoBusy(false)
+      toast.error(err.response?.data?.detail || 'Failed to start technical info report generation')
+    }
+  }
+
+  const handleCheckTechnicalInfoMissing = async () => {
+    if (!projectId) return
+    try {
+      setTechnicalInfoPreflightLoading(true)
+      setShowWholeHomeReport(true)
+      const { data } = await api.post('/generate/project-technical-info/preflight', { projectId })
+      setTechnicalInfoPreflight(data.preflight || null)
+      toast.success('Checked what is missing for your technical info report')
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to check technical info requirements')
+    } finally {
+      setTechnicalInfoPreflightLoading(false)
     }
   }
 
@@ -353,6 +453,11 @@ export default function ProjectPage() {
                   {formatStatusLabel(zoningDisplayStatus)}
                 </span>
               )}
+              {wholeHomeReportType === 'technical_info' && technicalInfoDisplayStatus && (
+                <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(technicalInfoDisplayStatus)}`}>
+                  {formatStatusLabel(technicalInfoDisplayStatus)}
+                </span>
+              )}
               <HiChevronRight className={`h-5 w-5 text-text-muted transition-transform ${showWholeHomeReport ? 'rotate-90' : ''}`} />
             </div>
           </button>
@@ -408,27 +513,48 @@ export default function ProjectPage() {
                     </label>
 
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={handleCheckZoningMissing}
-                        disabled={preflightLoading || zoningBusy || rooms.length === 0}
-                        className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-surface-alt disabled:opacity-40"
-                      >
-                        {preflightLoading ? "Checking..." : "Check What's Missing"}
-                      </button>
-                      <button
-                        onClick={handleGenerateProjectZoning}
-                        disabled={zoningBusy || rooms.length === 0}
-                        className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-40"
-                      >
-                        {zoningBusy ? 'Creating...' : 'Create Zoning PDF'}
-                      </button>
+                      {wholeHomeReportType === 'zoning' ? (
+                        <>
+                          <button
+                            onClick={handleCheckZoningMissing}
+                            disabled={preflightLoading || zoningBusy || technicalInfoBusy || rooms.length === 0}
+                            className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-surface-alt disabled:opacity-40"
+                          >
+                            {preflightLoading ? "Checking..." : "Check What's Missing"}
+                          </button>
+                          <button
+                            onClick={handleGenerateProjectZoning}
+                            disabled={zoningBusy || technicalInfoBusy || rooms.length === 0}
+                            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-40"
+                          >
+                            {zoningBusy ? 'Creating...' : 'Create Zoning PDF'}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={handleCheckTechnicalInfoMissing}
+                            disabled={technicalInfoPreflightLoading || technicalInfoBusy || zoningBusy}
+                            className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-surface-alt disabled:opacity-40"
+                          >
+                            {technicalInfoPreflightLoading ? 'Checking...' : 'Check Technical Info Missing'}
+                          </button>
+                          <button
+                            onClick={handleGenerateProjectTechnicalInfo}
+                            disabled={technicalInfoBusy || zoningBusy}
+                            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-40"
+                          >
+                            {technicalInfoBusy ? 'Creating...' : 'Create Technical Info PDF'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  {wholeHomeReportType === 'technical_info' && (
-                    <div className="mt-2 text-xs text-text-muted">
-                      Zoning buttons stay available here so you can run the whole-home zoning check/PDF without switching tabs.
-                    </div>
-                  )}
+                  <div className="mt-2 text-xs text-text-muted">
+                    {wholeHomeReportType === 'zoning'
+                      ? 'Zoning actions are tied to the Whole-Home Zoning dropdown selection.'
+                      : 'Technical Info actions are tied to the Whole-Home Technical Info dropdown selection.'}
+                  </div>
                 </div>
               </div>
 
@@ -517,30 +643,111 @@ export default function ProjectPage() {
                   ) : (
                     <>
                       <div className="rounded-xl border border-border bg-surface-alt p-4">
-                        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                          Whole-Home Technical Info
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                            What's Missing
+                          </div>
+                          {technicalInfoDisplayStatus && (
+                            <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(technicalInfoDisplayStatus)}`}>
+                              {formatStatusLabel(technicalInfoDisplayStatus)}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm text-text-muted">
-                          Use the dedicated chat to capture shared technical details that apply across rooms.
-                        </p>
-                        <div className="mt-3 space-y-1 text-sm text-text-muted">
-                          <div>• Structural constraints or load-bearing walls</div>
-                          <div>• HVAC, plumbing, and electrical upgrade plans</div>
-                          <div>• Accessibility, code, or permitting considerations</div>
-                          <div>• Whole-home materials, systems, and install preferences</div>
-                        </div>
+                        {technicalInfoPreflightLoading ? (
+                          <p className="text-sm text-text-muted">Checking your whole-home technical chat...</p>
+                        ) : technicalInfoMissingItems.length > 0 ? (
+                          <div className="space-y-1 text-sm text-text-muted">
+                            {technicalInfoMissingItems.map((item, idx) => (
+                              <div key={`${item}-${idx}`}>• {item}</div>
+                            ))}
+                          </div>
+                        ) : technicalInfoPreflight ? (
+                          <p className="text-sm text-text-muted">
+                            No missing items found in the latest technical info preflight check.
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-sm text-text-muted">
+                              Use the dedicated chat to capture shared technical details that apply across rooms.
+                            </p>
+                            <div className="mt-3 space-y-1 text-sm text-text-muted">
+                              <div>• Structural constraints or load-bearing walls</div>
+                              <div>• HVAC, plumbing, and electrical upgrade plans</div>
+                              <div>• Accessibility, code, or permitting considerations</div>
+                              <div>• Whole-home materials, systems, and install preferences</div>
+                            </div>
+                          </>
+                        )}
+                        {technicalInfoPreflight?.summary && (
+                          <p className="mt-3 text-xs text-text-muted">{technicalInfoPreflight.summary}</p>
+                        )}
                       </div>
 
                       <div className="rounded-xl border border-border bg-surface-alt p-4">
                         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
                           Status
                         </div>
-                        <p className="text-sm text-text-muted">
-                          Technical info is stored in the whole-home technical chat as a separate thread from room chats.
-                        </p>
-                        <p className="mt-2 text-xs text-text-muted">
-                          This helps you keep report-level context in one place while rooms stay focused on design iterations.
-                        </p>
+                        {!technicalInfoReport && !technicalInfoPreflight ? (
+                          <>
+                            <p className="text-sm text-text-muted">
+                              No technical info PDF yet. Use the button above after adding details in the technical chat.
+                            </p>
+                            <p className="mt-2 text-xs text-text-muted">
+                              Technical info is stored in a separate whole-home chat so it doesn’t get mixed with room design iterations.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            {technicalInfoDisplayStatus && (
+                              <div className="mb-2">
+                                <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(technicalInfoDisplayStatus)}`}>
+                                  {formatStatusLabel(technicalInfoDisplayStatus)}
+                                </span>
+                              </div>
+                            )}
+                            {technicalInfoPreflight ? (
+                              <>
+                                <p className="text-sm text-text-muted">
+                                  {technicalInfoMissingItems.length > 0
+                                    ? `Technical preflight complete. ${technicalInfoMissingItems.length} detail${technicalInfoMissingItems.length === 1 ? '' : 's'} still needed before a complete technical info PDF.`
+                                    : 'Technical preflight complete. The technical info looks ready for PDF generation.'}
+                                </p>
+                                <p className="mt-2 text-xs text-text-muted">
+                                  This status is from the latest technical preflight check and updates before PDF generation.
+                                </p>
+                                {technicalInfoPreflight?.chatStats && (
+                                  <p className="mt-2 text-xs text-text-muted">
+                                    Reviewed {technicalInfoPreflight.chatStats.messageCount || 0} messages
+                                    {typeof technicalInfoPreflight.capturedProgramFields === 'number'
+                                      ? ` • ${technicalInfoPreflight.capturedProgramFields} program fields captured`
+                                      : ''}
+                                  </p>
+                                )}
+                                {technicalInfoReport && (
+                                  <p className="mt-2 text-xs text-text-muted">
+                                    A saved technical info PDF also exists and updates after you create a new PDF.
+                                  </p>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm text-text-muted">
+                                  {technicalInfoReport.summary || 'Technical info PDF generated from the whole-home technical chat.'}
+                                </p>
+                                {Array.isArray(technicalInfoReport?.inputAcquisition?.missingQuestions) && technicalInfoReport.inputAcquisition.missingQuestions.length > 0 && (
+                                  <div className="mt-2 space-y-1 text-xs text-text-muted">
+                                    {technicalInfoReport.inputAcquisition.missingQuestions.slice(0, 4).map((q, idx) => (
+                                      <div key={`${q}-${idx}`}>• {q}</div>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            <div className="mt-3 text-xs text-text-muted">
+                              Use the top <span className="font-medium text-text">Create Technical Info PDF</span> button to generate or regenerate the PDF. It will auto-download when ready.
+                            </div>
+                          </>
+                        )}
                       </div>
                     </>
                   )}
@@ -556,8 +763,8 @@ export default function ProjectPage() {
                     </div>
                   </div>
 
-                  <div className="overflow-hidden rounded-xl border border-border bg-surface-alt">
-                    <div className="h-[360px] bg-surface">
+                  <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface-alt">
+                    <div className="h-[360px] min-h-0 bg-surface">
                       <ChatWindow
                         key={reportChatRoomId || 'project-report-chat'}
                         messages={reportChatMessages}
