@@ -7,6 +7,7 @@ from firebase_admin import firestore
 logger = logging.getLogger(__name__)
 
 _db = None
+PROJECT_CHAT_ROOM_ID_PREFIX = "__project_chat__:"
 
 
 def get_db():
@@ -24,6 +25,20 @@ def _doc_to_dict(doc) -> Optional[dict]:
     return data
 
 
+def make_project_chat_room_id(scope: str) -> str:
+    return f"{PROJECT_CHAT_ROOM_ID_PREFIX}{scope}"
+
+
+def is_project_chat_room_id(room_id: Optional[str]) -> bool:
+    return bool(room_id and str(room_id).startswith(PROJECT_CHAT_ROOM_ID_PREFIX))
+
+
+def get_project_chat_scope_from_room_id(room_id: str) -> Optional[str]:
+    if not is_project_chat_room_id(room_id):
+        return None
+    return str(room_id)[len(PROJECT_CHAT_ROOM_ID_PREFIX):] or None
+
+
 # ── Projects ────────────────────────────────────────────────────────────────
 
 def create_project(user_id: str, name: str, description: str = "") -> dict:
@@ -35,6 +50,21 @@ def create_project(user_id: str, name: str, description: str = "") -> dict:
         "description": description,
         "thumbnailUrl": None,
         "status": "active",
+        "site": {
+            "address": "",
+            "parcelId": "",
+            "zoningDistrict": "",
+            "lotAreaSqFt": None,
+            "maxHeightFt": None,
+            "maxLotCoveragePct": None,
+            "setbacksFt": {"front": None, "rear": None, "left": None, "right": None},
+            "proposed": {
+                "footprintAreaSqFt": None,
+                "heightFt": None,
+                "setbacksFt": {"front": None, "rear": None, "left": None, "right": None},
+            },
+        },
+        "regulatory": {"zoning": None, "technicalInfo": None},
         "createdAt": firestore.SERVER_TIMESTAMP,
         "updatedAt": firestore.SERVER_TIMESTAMP,
     }
@@ -82,6 +112,12 @@ def delete_project(project_id: str) -> bool:
         for msg in msgs:
             msg.reference.delete()
         room.reference.delete()
+    report_chats = ref.collection("report_chats").stream()
+    for chat_doc in report_chats:
+        msgs = chat_doc.reference.collection("messages").stream()
+        for msg in msgs:
+            msg.reference.delete()
+        chat_doc.reference.delete()
     ref.delete()
     return True
 
@@ -100,6 +136,7 @@ def create_room(project_id: str, name: str, room_type: str) -> dict:
         "latest3dJobId": None,
         "approved2dImageUrls": [],
         "artifactUrl": None,
+        "artifactMetadata": None,
         "worldLabs": {
             "worldId": None,
             "operationId": None,
@@ -220,9 +257,61 @@ def get_messages(project_id: str, room_id: str) -> List[dict]:
     return [_doc_to_dict(d) for d in docs]
 
 
+def add_project_chat_message(project_id: str, scope: str, role: str, content: str,
+                             image_urls: Optional[List[str]] = None,
+                             metadata: Optional[dict] = None) -> dict:
+    db = get_db()
+    room_id = make_project_chat_room_id(scope)
+    chat_ref = (
+        db.collection("projects")
+        .document(project_id)
+        .collection("report_chats")
+        .document(scope)
+    )
+    chat_ref.set({
+        "scope": scope,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+    }, merge=True)
+    ref = (
+        chat_ref
+        .collection("messages")
+        .document()
+    )
+    data = {
+        "roomId": room_id,
+        "role": role,
+        "content": content,
+        "imageUrls": image_urls or [],
+        "metadata": {
+            "type": "project_report_chat",
+            "scope": scope,
+            **(metadata or {}),
+        },
+        "createdAt": firestore.SERVER_TIMESTAMP,
+    }
+    ref.set(data)
+    data["id"] = ref.id
+    data["createdAt"] = datetime.utcnow().isoformat()
+    return data
+
+
+def get_project_chat_messages(project_id: str, scope: str) -> List[dict]:
+    db = get_db()
+    docs = (
+        db.collection("projects")
+        .document(project_id)
+        .collection("report_chats")
+        .document(scope)
+        .collection("messages")
+        .order_by("createdAt")
+        .stream()
+    )
+    return [_doc_to_dict(d) for d in docs]
+
+
 # ── Generation Jobs ──────────────────────────────────────────────────────────
 
-def create_generation_job(room_id: str, project_id: str, user_id: str,
+def create_generation_job(room_id: Optional[str], project_id: str, user_id: str,
                           job_type: str, prompt: str,
                           reference_image_urls: Optional[List[str]] = None) -> dict:
     db = get_db()

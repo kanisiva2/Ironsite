@@ -398,12 +398,6 @@ async def generate_3d(body: Generate3DRequest,
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
-    if not room.get("artifactUrl"):
-        raise HTTPException(
-            status_code=400,
-            detail="Generate an artifact before creating a 3D model",
-        )
-
     job = fs.create_generation_job(
         room_id=body.roomId,
         project_id=body.projectId,
