@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import LoadingSpinner from '../shared/LoadingSpinner'
+import toast from 'react-hot-toast'
+import api from '../../services/api'
 
 function coerceUrl(value) {
   if (typeof value === 'string' && value.trim()) {
@@ -32,7 +34,7 @@ function coerceUrl(value) {
 
 function getCandidateSplatUrls(worldLabs) {
   const splats = worldLabs?.splatUrls || {}
-  const preferred = [splats['500k'], splats['100k'], splats.full_res]
+  const preferred = [splats.full_res, splats['500k'], splats['100k']]
   const urls = []
   const seen = new Set()
 
@@ -54,6 +56,26 @@ function getCandidateSplatUrls(worldLabs) {
   }
 
   return urls
+}
+
+function getFilenameFromDisposition(value) {
+  if (!value || typeof value !== 'string') return null
+  const utfMatch = value.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1].trim())
+    } catch {
+      return utfMatch[1].trim()
+    }
+  }
+  const basicMatch = value.match(/filename="?([^";]+)"?/i)
+  return basicMatch?.[1]?.trim() || null
+}
+
+function replaceExtension(path, fromExt, toExt) {
+  if (!path || typeof path !== 'string') return path
+  const regex = new RegExp(`\\.${fromExt}$`, 'i')
+  return path.replace(regex, `.${toExt}`)
 }
 
 function detectSceneFormat(url, GaussianSplats3D) {
@@ -164,9 +186,12 @@ function fitCameraToRoom(viewer, THREE) {
     controls.screenSpacePanning = false
     controls.enableZoom = true
     controls.enableRotate = true
-    controls.zoomSpeed = 1.0
-    controls.rotateSpeed = 1.0
-    controls.panSpeed = 0.8
+    controls.enableDamping = true
+    controls.dampingFactor = 0.12
+    controls.zoomSpeed = 0.65
+    controls.rotateSpeed = 0.55
+    controls.panSpeed = 0.45
+    controls.autoRotate = false
     controls.minPolarAngle = 0.001
     controls.maxPolarAngle = Math.PI - 0.001
     controls.minAzimuthAngle = -Infinity
@@ -178,12 +203,13 @@ function fitCameraToRoom(viewer, THREE) {
   }
 }
 
-export default function ThreeViewer({ worldLabs }) {
+export default function ThreeViewer({ worldLabs, projectId, roomId }) {
   const containerRef = useRef(null)
   const viewerRef = useRef(null)
   const threeModuleRef = useRef(null)
   const [viewerLoading, setViewerLoading] = useState(true)
   const [viewerError, setViewerError] = useState(null)
+  const [exporting, setExporting] = useState(false)
   const [flipVertical, setFlipVertical] = useState(true)
 
   const candidateKey = useMemo(
@@ -199,6 +225,109 @@ export default function ThreeViewer({ worldLabs }) {
     const THREE = threeModuleRef.current
     if (!viewer || !THREE) return
     fitCameraToRoom(viewer, THREE)
+  }
+
+  const handleExportModel = async () => {
+    if (exporting || !hasWorldRecord) return
+    if (!projectId || !roomId) {
+      toast.error('Unable to export: missing room context.')
+      return
+    }
+
+    setExporting(true)
+
+    try {
+      const [{ default: JSZip }, { loadSpz, serializePly }] = await Promise.all([
+        import('jszip'),
+        import('spz-js'),
+      ])
+
+      const response = await api.get(`/generate/3d/export-bundle/${projectId}/${roomId}`, {
+        responseType: 'blob',
+      })
+      const originalBlob = response.data
+      const zipInput = await JSZip.loadAsync(originalBlob)
+      const zipOutput = new JSZip()
+
+      let convertedCount = 0
+      let failedCount = 0
+
+      const entries = Object.entries(zipInput.files)
+      for (const [path, entry] of entries) {
+        if (entry.dir) continue
+
+        if (path.toLowerCase().endsWith('.spz')) {
+          try {
+            const spzBuffer = await entry.async('arraybuffer')
+            const gs = await loadSpz(spzBuffer)
+            const plyBuffer = serializePly(gs)
+            const plyPath = replaceExtension(path, 'spz', 'ply')
+            zipOutput.file(plyPath, plyBuffer)
+            convertedCount += 1
+          } catch {
+            // Keep original file if conversion fails for a specific entry.
+            const originalData = await entry.async('uint8array')
+            zipOutput.file(path, originalData)
+            failedCount += 1
+          }
+          continue
+        }
+
+        const fileData = await entry.async('uint8array')
+        zipOutput.file(path, fileData)
+      }
+
+      const blob = await zipOutput.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
+      })
+
+      const inputName = getFilenameFromDisposition(response.headers?.['content-disposition'])
+        || `${worldLabs?.worldId || 'room-3d'}-assets.zip`
+      const filename = inputName.toLowerCase().endsWith('.zip')
+        ? inputName.replace(/\.zip$/i, '-ply.zip')
+        : `${inputName}-ply.zip`
+
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(objectUrl)
+
+      if (convertedCount > 0) {
+        toast.success(`Converted ${convertedCount} SPZ file${convertedCount === 1 ? '' : 's'} to PLY.`)
+      } else {
+        toast('No SPZ files were found to convert.', { icon: 'ℹ' })
+      }
+      if (failedCount > 0) {
+        toast.error(`${failedCount} SPZ file${failedCount === 1 ? '' : 's'} could not be converted and were kept as SPZ.`)
+      }
+    } catch (error) {
+      let detail = 'Unable to export 3D asset bundle.'
+      const maybeBlob = error?.response?.data
+
+      if (maybeBlob instanceof Blob) {
+        try {
+          const text = await maybeBlob.text()
+          const parsed = JSON.parse(text)
+          if (parsed?.detail) {
+            detail = parsed.detail
+          }
+        } catch {
+          // Ignore JSON parse failures and keep default message.
+        }
+      } else if (error?.response?.data?.detail) {
+        detail = error.response.data.detail
+      }
+
+      toast.error(detail)
+    } finally {
+      setExporting(false)
+    }
   }
 
   useEffect(() => {
@@ -232,10 +361,6 @@ export default function ThreeViewer({ worldLabs }) {
         for (const splatUrl of candidateSplatUrls) {
           try {
             const sceneFormat = detectSceneFormat(splatUrl, GaussianSplats3D)
-            console.info('3D viewer: loading splat candidate', {
-              url: splatUrl,
-              format: sceneFormat,
-            })
             viewer = new GaussianSplats3D.Viewer({
               rootElement: container,
               sharedMemoryForWorkers: false,
@@ -259,6 +384,16 @@ export default function ThreeViewer({ worldLabs }) {
             ])
             viewer.start()
             fitCameraToRoom(viewer, THREE)
+
+            // Disable library keyboard debug shortcuts/info panel toggles.
+            if (viewer.controls?.stopListenToKeyEvents) {
+              viewer.controls.stopListenToKeyEvents()
+            }
+            if (viewer.keyDownListener) {
+              window.removeEventListener('keydown', viewer.keyDownListener)
+              viewer.keyDownListener = null
+            }
+
             viewerRef.current = viewer
             const canvas = container.querySelector('canvas')
             if (canvas) {
@@ -273,7 +408,6 @@ export default function ThreeViewer({ worldLabs }) {
             loaded = true
             break
           } catch (err) {
-            console.warn('3D viewer: failed splat candidate', splatUrl, err)
             lastError = err
             try {
               if (viewer) viewer.dispose()
@@ -289,8 +423,7 @@ export default function ThreeViewer({ worldLabs }) {
         }
 
         setViewerLoading(false)
-      } catch (err) {
-        console.error('Failed to initialize 3D viewer:', err)
+      } catch {
         setViewerError('Failed to load 3D scene')
         setViewerLoading(false)
       }
@@ -332,6 +465,19 @@ export default function ThreeViewer({ worldLabs }) {
   return (
     <div className="relative isolate flex h-full min-h-0 flex-col overflow-hidden">
       <div className="absolute right-2 top-2 z-20 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleExportModel}
+          disabled={!hasWorldRecord || exporting}
+          title={
+            hasWorldRecord
+              ? 'Download a ZIP bundle with Blender-compatible assets'
+              : 'Generate a 3D scene first to enable export'
+          }
+          className="rounded-md border border-border bg-surface/90 px-2.5 py-1 text-xs font-medium text-text shadow-sm backdrop-blur transition-colors hover:bg-surface disabled:opacity-60"
+        >
+          {exporting ? 'Exporting...' : 'Export ZIP'}
+        </button>
         <button
           type="button"
           onClick={handleResetView}

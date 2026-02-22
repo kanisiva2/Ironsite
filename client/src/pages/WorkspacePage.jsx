@@ -279,6 +279,8 @@ export default function WorkspacePage() {
               <ThreeViewer
                 key={room?.worldLabs?.worldId || room?.worldLabs?.operationId || 'viewer'}
                 worldLabs={room?.worldLabs}
+                projectId={projectId}
+                roomId={roomId}
               />
             )}
           </div>

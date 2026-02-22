@@ -19,6 +19,9 @@ export default function ChatInput({ onSend, disabled }) {
   }
 
   const handleKeyDown = (e) => {
+    // Prevent 3D viewer/global key handlers from hijacking typing (e.g., WASD).
+    e.stopPropagation()
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e)

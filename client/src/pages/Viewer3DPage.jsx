@@ -63,6 +63,8 @@ export default function Viewer3DPage() {
           <ThreeViewer
             key={room?.worldLabs?.worldId || room?.worldLabs?.operationId || 'viewer'}
             worldLabs={room?.worldLabs}
+            projectId={projectId}
+            roomId={roomId}
           />
         </div>
       </div>
