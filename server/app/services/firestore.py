@@ -97,6 +97,7 @@ def create_room(project_id: str, name: str, room_type: str) -> dict:
         "roomType": room_type,
         "thumbnailUrl": None,
         "status": "draft",
+        "latest3dJobId": None,
         "approved2dImageUrls": [],
         "artifactUrl": None,
         "worldLabs": {

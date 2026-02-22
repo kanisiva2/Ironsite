@@ -6,11 +6,39 @@ from app.dependencies import get_current_user
 from app.models.generation import Generate3DRequest
 from app.services import firestore as fs
 from app.services import worldlabs
-from app.services.pdf_generator import messages_to_text_summary
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/generate", tags=["generation"])
+
+
+def _collect_recent_design_images(messages, max_images: int = 4):
+    """
+    Pull the most recent Nano Banana-generated design image URLs from chat history.
+    """
+    urls = []
+    seen = set()
+
+    for msg in reversed(messages):
+        metadata = msg.get("metadata", {}) or {}
+        if metadata.get("type") != "image_generation":
+            continue
+
+        for url in reversed(msg.get("imageUrls", []) or []):
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            urls.append(url)
+            if len(urls) >= max_images:
+                # Return chronological order for stable azimuth assignment.
+                return list(reversed(urls))
+
+    return list(reversed(urls))
+
+
+def _room_instruction(room: dict) -> str:
+    room_type = (room.get("roomType") or room.get("name") or "room").replace("_", " ")
+    return "Generate a realistic %s interior based on these design images." % room_type
 
 
 def _compute_azimuths(count):
@@ -31,30 +59,34 @@ async def _run_3d_generation(job_id, project_id, room_id, model):
         fs.update_generation_job(job_id, {"status": "processing"})
 
         room = fs.get_room(project_id, room_id)
-        approved_urls = room.get("approved2dImageUrls", [])
-
         messages = fs.get_messages(project_id, room_id)
-        conversation_summary = messages_to_text_summary(messages)
-        text_prompt = (
-            "Interior design scene based on consultation:\n"
-            "%s" % conversation_summary[:2000]
-        )
+        selected_urls = _collect_recent_design_images(messages, max_images=4)
+        if selected_urls:
+            logger.info(
+                "3D generation using %d most recent Nano Banana images",
+                len(selected_urls),
+            )
+        else:
+            logger.info("No Nano Banana images found; falling back to text-only 3D generation")
+
+        text_prompt = _room_instruction(room)
+        logger.info("3D generation text instruction: %s", text_prompt)
 
         project = fs.get_project(project_id)
         display_name = "%s - %s" % (
             room.get("name", "Room"), project.get("name", "Project")
         )
 
-        if len(approved_urls) == 0:
+        if len(selected_urls) == 0:
             operation_id = await worldlabs.generate_world_from_text(
                 display_name=display_name,
                 text_prompt=text_prompt,
                 model=model,
             )
 
-        elif len(approved_urls) == 1:
+        elif len(selected_urls) == 1:
             media_id = await worldlabs.upload_image_from_url(
-                approved_urls[0], "room_%s_0.jpg" % room_id
+                selected_urls[0], "room_%s_0.jpg" % room_id
             )
             operation_id = await worldlabs.generate_world_from_image(
                 display_name=display_name,
@@ -64,9 +96,9 @@ async def _run_3d_generation(job_id, project_id, room_id, model):
             )
 
         else:
-            azimuths = _compute_azimuths(len(approved_urls))
+            azimuths = _compute_azimuths(len(selected_urls))
             images = []
-            for i, url in enumerate(approved_urls):
+            for i, url in enumerate(selected_urls):
                 media_id = await worldlabs.upload_image_from_url(
                     url, "room_%s_%d.jpg" % (room_id, i)
                 )
@@ -83,7 +115,23 @@ async def _run_3d_generation(job_id, project_id, room_id, model):
             "externalIds.worldLabsOperationId": operation_id,
         })
 
-        assets = await worldlabs.poll_operation(operation_id)
+        assets = await worldlabs.poll_operation(operation_id, model=model)
+
+        # Prevent stale jobs from overwriting a newer 3D generation.
+        latest_room = fs.get_room(project_id, room_id) or {}
+        latest_job_id = latest_room.get("latest3dJobId")
+        if latest_job_id and latest_job_id != job_id:
+            logger.info(
+                "Skipping room worldLabs update for stale job %s; latest is %s",
+                job_id,
+                latest_job_id,
+            )
+            fs.update_generation_job(job_id, {
+                "status": "completed",
+                "externalIds.worldLabsWorldId": assets.world_id,
+                "output.resultUrls": [assets.marble_url],
+            })
+            return
 
         world_labs_data = {
             "worldLabs.worldId": assets.world_id,
@@ -94,9 +142,18 @@ async def _run_3d_generation(job_id, project_id, room_id, model):
             "worldLabs.panoUrl": assets.pano_url,
             "worldLabs.caption": assets.caption,
             "worldLabs.operationId": operation_id,
+            "latest3dJobId": job_id,
             "status": "complete",
         }
         fs.update_room(project_id, room_id, world_labs_data)
+        logger.info(
+            "Saved room worldLabs data (room=%s): marble=%s splat500k=%s splat100k=%s splatFull=%s",
+            room_id,
+            bool(assets.marble_url),
+            bool(assets.splat_urls.get("500k")),
+            bool(assets.splat_urls.get("100k")),
+            bool(assets.splat_urls.get("full_res")),
+        )
 
         fs.update_generation_job(job_id, {
             "status": "completed",
@@ -156,7 +213,11 @@ async def generate_3d(body: Generate3DRequest,
         prompt="3D generation for %s" % room.get("name", "room"),
     )
 
-    fs.update_room(body.projectId, body.roomId, {"status": "generating_3d"})
+    fs.update_room(
+        body.projectId,
+        body.roomId,
+        {"status": "generating_3d", "latest3dJobId": job["id"]},
+    )
 
     background_tasks.add_task(
         _run_3d_generation, job["id"], body.projectId, body.roomId, body.model

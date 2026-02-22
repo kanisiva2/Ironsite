@@ -45,7 +45,14 @@ export default function WorkspacePage() {
           [...new Set([...prev, ...data.room.approved2dImageUrls])]
         )
       }
-      if (data.room.worldLabs?.splatUrls) {
+      const has3dData = !!(
+        data.room?.worldLabs?.worldId ||
+        data.room?.worldLabs?.marbleUrl ||
+        data.room?.worldLabs?.splatUrls?.['500k'] ||
+        data.room?.worldLabs?.splatUrls?.['100k'] ||
+        data.room?.worldLabs?.splatUrls?.full_res
+      )
+      if (has3dData) {
         setActiveTab('3d')
       }
     } catch {
@@ -108,7 +115,7 @@ export default function WorkspacePage() {
     }
   }
 
-  const handleRejectImage = (imageUrl) => {
+  const handleRejectImage = () => {
     const feedback = window.prompt('What should be different?')
     if (feedback) {
       sendMessage(`Regarding the generated image: ${feedback}`)
@@ -188,6 +195,13 @@ export default function WorkspacePage() {
 
   const approvedCount = room?.approved2dImageUrls?.length || 0
   const hasArtifact = !!room?.artifactUrl
+  const has3dScene = !!(
+    room?.worldLabs?.worldId ||
+    room?.worldLabs?.marbleUrl ||
+    room?.worldLabs?.splatUrls?.['500k'] ||
+    room?.worldLabs?.splatUrls?.['100k'] ||
+    room?.worldLabs?.splatUrls?.full_res
+  )
 
   return (
     <div className="flex h-screen flex-col bg-surface-alt">
@@ -203,16 +217,16 @@ export default function WorkspacePage() {
       </div>
 
       {/* Main workspace */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left: Chat */}
-        <div className="flex w-1/2 flex-col border-r border-border bg-surface">
+        <div className="flex w-1/2 min-h-0 flex-col border-r border-border bg-surface">
           <ChatWindow messages={messages} loading={chatLoading} streaming={streaming} />
           <StatusIndicator status={streaming ? 'thinking' : pipelineStatus} />
           <ChatInput onSend={sendMessage} disabled={streaming} />
         </div>
 
         {/* Right: Viewer */}
-        <div className="flex w-1/2 flex-col bg-surface">
+        <div className="flex w-1/2 min-h-0 flex-col bg-surface">
           {/* Tabs */}
           <div className="flex items-center gap-1 border-b border-border px-4 pt-2">
             <button
@@ -235,10 +249,19 @@ export default function WorkspacePage() {
             >
               3D Viewer
             </button>
+
+            {has3dScene && (
+              <Link
+                to={`/projects/${projectId}/rooms/${roomId}/3d`}
+                className="ml-auto rounded-md border border-border px-3 py-1 text-xs font-medium text-text-muted transition-colors hover:bg-surface hover:text-text"
+              >
+                Expand Viewer
+              </Link>
+            )}
           </div>
 
           {/* Viewer content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden">
             {activeTab === 'images' ? (
               <ImageViewer
                 images={generatedImages}
@@ -249,7 +272,10 @@ export default function WorkspacePage() {
                 loading={pipelineStatus === 'generating_2d'}
               />
             ) : (
-              <ThreeViewer worldLabs={room?.worldLabs} />
+              <ThreeViewer
+                key={room?.worldLabs?.worldId || room?.worldLabs?.operationId || 'viewer'}
+                worldLabs={room?.worldLabs}
+              />
             )}
           </div>
 

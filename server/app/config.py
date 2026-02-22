@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # World Labs
     worldlabs_api_key: str = ""
     worldlabs_model: str = "Marble 0.1-plus"
+    worldlabs_poll_interval_seconds: int = 10
+    worldlabs_max_poll_attempts: int = 180
+    worldlabs_max_poll_attempts_mini: int = 120
 
     # App
     cors_origins: str = "http://localhost:5173"
