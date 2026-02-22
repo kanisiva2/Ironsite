@@ -1,0 +1,1 @@
+A photorealistic interior design rendering of {room_description}. The image should show {style} aesthetics with {materials}. Lighting: {lighting}. Camera angle: wide-angle perspective showing the full room layout. High resolution, architectural photography quality, 4K detail.

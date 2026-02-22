@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+firebase-admin
+google-generativeai
+httpx
+pydantic-settings
+python-multipart
+sse-starlette
+python-dotenv
+reportlab
