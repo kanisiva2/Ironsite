@@ -293,6 +293,11 @@ textarea::placeholder {
   to   { stroke-dashoffset: 0;   }
 }
 
+@keyframes convergingVineGrow {
+  from { stroke-dashoffset: 1400; }
+  to   { stroke-dashoffset: 0;    }
+}
+
 @keyframes smallTendrilGrow {
   from { stroke-dashoffset: 65; }
   to   { stroke-dashoffset: 0;  }

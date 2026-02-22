@@ -65,30 +65,61 @@ function CornerVine({ flip = false }) {
   )
 }
 
-/* ── Short curvy vine accent — grows from screen edge ── */
-function HorizontalVine({ fromRight = false, top, delay = 0 }) {
-  const gid = `hvg-rm-${fromRight ? 'r' : 'l'}-${Math.round(top)}`
-  const stemD = fromRight
-    ? 'M300,40 C260,18 220,52 180,28 C140,6 100,46 60,30 C32,20 10,34 0,30'
-    : 'M0,40 C40,18 80,52 120,28 C160,6 200,46 240,30 C268,20 290,34 300,30'
+/* ── Converging vine accents — grow from both edges toward center ── */
+function ConvergingVines({ top, delay = 0, variant = 0 }) {
+  const gid = `cvines-rm-${variant}-${String(top).replace(/\D/g, '')}`
 
-  const tendril = fromRight
-    ? 'M180,28 C170,14 158,10 148,8'
-    : 'M120,28 C130,14 142,10 152,8'
+  const variants = [
+    {
+      left: {
+        stem: 'M0,30 C120,8 280,52 440,22 C580,2 720,38 870,26 C940,20 970,28 1000,26',
+        tendrils: ['M440,22 C454,8 468,4 480,2', 'M720,38 C734,52 748,54 760,52'],
+        leaves: [{ cx: 480, cy: 2 }, { cx: 760, cy: 52 }],
+      },
+      right: {
+        stem: 'M2000,32 C1880,10 1720,54 1560,24 C1420,4 1280,40 1130,28 C1060,22 1030,30 1000,28',
+        tendrils: ['M1560,24 C1546,10 1532,6 1520,4', 'M1280,40 C1266,54 1252,56 1240,54'],
+        leaves: [{ cx: 1520, cy: 4 }, { cx: 1240, cy: 54 }],
+      },
+    },
+    {
+      left: {
+        stem: 'M0,38 C140,58 300,12 460,40 C600,58 740,16 880,32 C940,38 970,28 1000,30',
+        tendrils: ['M300,12 C286,2 272,0 260,2', 'M740,16 C726,4 712,2 700,4'],
+        leaves: [{ cx: 260, cy: 2 }, { cx: 700, cy: 4 }],
+      },
+      right: {
+        stem: 'M2000,36 C1860,56 1700,10 1540,38 C1400,56 1260,14 1120,30 C1060,36 1030,26 1000,28',
+        tendrils: ['M1700,10 C1714,2 1728,0 1740,2', 'M1260,14 C1274,4 1288,2 1300,4'],
+        leaves: [{ cx: 1740, cy: 2 }, { cx: 1300, cy: 4 }],
+      },
+    },
+    {
+      left: {
+        stem: 'M0,34 C100,54 220,14 360,44 C480,62 580,8 700,28 C790,42 870,18 940,26 C970,30 990,24 1000,26',
+        tendrils: ['M360,44 C374,58 388,62 400,60', 'M580,8 C566,0 552,0 540,2'],
+        leaves: [{ cx: 400, cy: 60 }, { cx: 540, cy: 2 }],
+      },
+      right: {
+        stem: 'M2000,30 C1900,50 1780,12 1640,42 C1520,60 1420,6 1300,26 C1210,40 1130,16 1060,24 C1030,28 1010,22 1000,24',
+        tendrils: ['M1640,42 C1626,56 1612,60 1600,58', 'M1420,6 C1434,0 1448,0 1460,2'],
+        leaves: [{ cx: 1600, cy: 58 }, { cx: 1460, cy: 2 }],
+      },
+    },
+  ]
 
-  const leaf = fromRight
-    ? { cx: 148, cy: 8 }
-    : { cx: 152, cy: 8 }
+  const v = variants[variant % variants.length]
 
   return (
     <svg
-      viewBox="0 0 300 60" aria-hidden
-      preserveAspectRatio={fromRight ? 'xMaxYMid meet' : 'xMinYMid meet'}
+      viewBox="0 0 2000 64"
+      preserveAspectRatio="none"
+      aria-hidden
       style={{
         position: 'absolute',
         top,
-        ...(fromRight ? { right: 0 } : { left: 0 }),
-        width: '35vw',
+        left: 0,
+        width: '100%',
         height: 50,
         pointerEvents: 'none',
         opacity: 0.5,
@@ -96,18 +127,43 @@ function HorizontalVine({ fromRight = false, top, delay = 0 }) {
       }}
     >
       <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="0.3">
-          <stop offset="0%" stopColor="#f0cc88" />
-          <stop offset="52%" stopColor="#c8965c" />
-          <stop offset="100%" stopColor="#9a6530" stopOpacity="0.55" />
+        <linearGradient id={`${gid}-l`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#d4a05c" stopOpacity="0.9" />
+          <stop offset="60%" stopColor="#c8965c" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#c8965c" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id={`${gid}-r`} x1="1" y1="0" x2="0" y2="0">
+          <stop offset="0%" stopColor="#d4a05c" stopOpacity="0.9" />
+          <stop offset="60%" stopColor="#c8965c" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#c8965c" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={stemD} fill="none" stroke={`url(#${gid})`} strokeWidth="2" strokeLinecap="round"
-        style={{ strokeDasharray: 420, strokeDashoffset: 420, animation: `smallVineGrow 2s ease-out ${0.3 + delay}s both` }} />
-      <path d={tendril} fill="none" stroke={`url(#${gid})`} strokeWidth="1.3" strokeLinecap="round"
-        style={{ strokeDasharray: 65, strokeDashoffset: 65, animation: `smallTendrilGrow 0.85s ease-out ${1.2 + delay}s both` }} />
-      <polygon points={`${leaf.cx},${leaf.cy - 6} ${leaf.cx + 5},${leaf.cy} ${leaf.cx},${leaf.cy + 6} ${leaf.cx - 5},${leaf.cy}`} fill={`url(#${gid})`}
-        style={{ opacity: 0, animation: `leafReveal 0.55s ease-out ${1.5 + delay}s both` }} />
+
+      <path d={v.left.stem} fill="none" stroke={`url(#${gid}-l)`} strokeWidth="2.2" strokeLinecap="round"
+        style={{ strokeDasharray: 1400, strokeDashoffset: 1400, animation: `convergingVineGrow 2.8s ease-out ${0.3 + delay}s both` }} />
+      {v.left.tendrils.map((d, i) => (
+        <path key={`lt${i}`} d={d} fill="none" stroke={`url(#${gid}-l)`} strokeWidth="1.4" strokeLinecap="round"
+          style={{ strokeDasharray: 65, strokeDashoffset: 65, animation: `smallTendrilGrow 0.85s ease-out ${1.5 + delay + i * 0.3}s both` }} />
+      ))}
+      {v.left.leaves.map(({ cx, cy }, i) => (
+        <polygon key={`ll${i}`}
+          points={`${cx},${cy - 5} ${cx + 4},${cy} ${cx},${cy + 5} ${cx - 4},${cy}`}
+          fill={`url(#${gid}-l)`}
+          style={{ opacity: 0, animation: `leafReveal 0.55s ease-out ${1.85 + delay + i * 0.3}s both` }} />
+      ))}
+
+      <path d={v.right.stem} fill="none" stroke={`url(#${gid}-r)`} strokeWidth="2.2" strokeLinecap="round"
+        style={{ strokeDasharray: 1400, strokeDashoffset: 1400, animation: `convergingVineGrow 2.8s ease-out ${0.5 + delay}s both` }} />
+      {v.right.tendrils.map((d, i) => (
+        <path key={`rt${i}`} d={d} fill="none" stroke={`url(#${gid}-r)`} strokeWidth="1.4" strokeLinecap="round"
+          style={{ strokeDasharray: 65, strokeDashoffset: 65, animation: `smallTendrilGrow 0.85s ease-out ${1.7 + delay + i * 0.3}s both` }} />
+      ))}
+      {v.right.leaves.map(({ cx, cy }, i) => (
+        <polygon key={`rl${i}`}
+          points={`${cx},${cy - 5} ${cx + 4},${cy} ${cx},${cy + 5} ${cx - 4},${cy}`}
+          fill={`url(#${gid}-r)`}
+          style={{ opacity: 0, animation: `leafReveal 0.55s ease-out ${2.05 + delay + i * 0.3}s both` }} />
+      ))}
     </svg>
   )
 }
@@ -534,11 +590,11 @@ export default function ProjectPage() {
         </div>
       </main>
 
-      {/* Horizontal vine accents — anchored to screen edges */}
+      {/* Converging vine accents — vines from both edges meet toward center */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
-        <HorizontalVine fromRight={false} top="38%" delay={0} />
-        <HorizontalVine fromRight={true} top="52%" delay={0.4} />
-        <HorizontalVine fromRight={false} top="66%" delay={0.8} />
+        <ConvergingVines top="22%" delay={0} variant={0} />
+        <ConvergingVines top="61%" delay={0.4} variant={1} />
+        <ConvergingVines top="89%" delay={0.8} variant={2} />
       </div>
 
       <NewRoomModal
