@@ -259,11 +259,18 @@ def add_project_chat_message(project_id: str, scope: str, role: str, content: st
                              metadata: Optional[dict] = None) -> dict:
     db = get_db()
     room_id = make_project_chat_room_id(scope)
-    ref = (
+    chat_ref = (
         db.collection("projects")
         .document(project_id)
         .collection("report_chats")
         .document(scope)
+    )
+    chat_ref.set({
+        "scope": scope,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+    }, merge=True)
+    ref = (
+        chat_ref
         .collection("messages")
         .document()
     )

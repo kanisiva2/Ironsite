@@ -261,6 +261,7 @@ export default function ProjectPage() {
 
   const zoningReport = project?.regulatory?.zoning
   const zoningMissingItems = deriveZoningMissingItems({ zoningReport, zoningPreflight })
+  const selectedWholeHomeReport = WHOLE_HOME_REPORT_TYPES[wholeHomeReportType] || WHOLE_HOME_REPORT_TYPES.zoning
 
   const handleCheckZoningMissing = async () => {
     if (!projectId) return
@@ -342,7 +343,7 @@ export default function ProjectPage() {
               </p>
             </div>
             <div className="flex items-center gap-3 pt-1">
-              {(zoningPreflight?.predictedComplianceStatus || zoningReport?.status) && (
+              {wholeHomeReportType === 'zoning' && (zoningPreflight?.predictedComplianceStatus || zoningReport?.status) && (
                 <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}`}>
                   {formatStatusLabel(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}
                 </span>
@@ -359,134 +360,179 @@ export default function ProjectPage() {
                     How This Works
                   </div>
                   <div className="mt-2 grid gap-2 text-sm text-text-muted">
-                    <div>1. Chat with Archvision in any room, or use the embedded Archvision chat below.</div>
-                    <div>2. Archvision reviews all room conversations to identify missing zoning inputs.</div>
-                    <div>3. Create one whole-home zoning report. The PDF downloads automatically when ready.</div>
+                    {wholeHomeReportType === 'zoning' ? (
+                      <>
+                        <div>1. Use the dedicated whole-home zoning chat below (or any room chat) to share parcel/zoning constraints.</div>
+                        <div>2. Archvision reviews room chats plus the whole-home zoning chat to identify missing zoning inputs.</div>
+                        <div>3. Create one whole-home zoning report. The PDF downloads automatically when ready.</div>
+                      </>
+                    ) : (
+                      <>
+                        <div>1. Use the dedicated whole-home technical info chat below for cross-room requirements.</div>
+                        <div>2. Keep shared details here (systems, constraints, preferences) instead of duplicating them in room chats.</div>
+                        <div>3. Room design chats stay focused on room-specific rendering and layout work.</div>
+                      </>
+                    )}
                   </div>
-                  <div className="mt-3 text-xs text-text-muted">
-                    Expert tip: if you already know parcel/zoning limits, discuss them in chat so Archvision can use them in the report prep.
-                  </div>
+                  {wholeHomeReportType === 'zoning' ? (
+                    <div className="mt-3 text-xs text-text-muted">
+                      Expert tip: if you already know parcel/zoning limits, discuss them in the whole-home zoning chat so Archvision can use them in report prep.
+                    </div>
+                  ) : (
+                    <div className="mt-3 text-xs text-text-muted">
+                      Use this for whole-home technical details like HVAC/electrical scope, structural constraints, accessibility, and utility notes.
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleCheckZoningMissing}
-                    disabled={preflightLoading || zoningBusy || rooms.length === 0}
-                    className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-surface-alt disabled:opacity-40"
-                  >
-                    {preflightLoading ? "Checking..." : "Check What's Missing"}
-                  </button>
-                  <button
-                    onClick={handleGenerateProjectZoning}
-                    disabled={zoningBusy || rooms.length === 0}
-                    className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-40"
-                  >
-                    {zoningBusy ? 'Creating...' : 'Create Zoning Report'}
-                  </button>
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <label className="min-w-[200px] text-xs text-text-muted">
+                    Whole-Home Report Type
+                    <select
+                      value={wholeHomeReportType}
+                      onChange={(e) => setWholeHomeReportType(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text"
+                    >
+                      {Object.entries(WHOLE_HOME_REPORT_TYPES).map(([value, config]) => (
+                        <option key={value} value={value}>
+                          {config.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {wholeHomeReportType === 'zoning' && (
+                    <>
+                      <button
+                        onClick={handleCheckZoningMissing}
+                        disabled={preflightLoading || zoningBusy || rooms.length === 0}
+                        className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-surface-alt disabled:opacity-40"
+                      >
+                        {preflightLoading ? "Checking..." : "Check What's Missing"}
+                      </button>
+                      <button
+                        onClick={handleGenerateProjectZoning}
+                        disabled={zoningBusy || rooms.length === 0}
+                        className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-40"
+                      >
+                        {zoningBusy ? 'Creating...' : 'Create Zoning Report'}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
               <div className="grid gap-4 xl:grid-cols-[1.05fr_1.2fr]">
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-border bg-surface-alt p-4">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                        What's Missing
+                  {wholeHomeReportType === 'zoning' ? (
+                    <>
+                      <div className="rounded-xl border border-border bg-surface-alt p-4">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                            What's Missing
+                          </div>
+                          {(zoningPreflight?.predictedComplianceStatus || zoningReport?.status) && (
+                            <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}`}>
+                              {formatStatusLabel(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}
+                            </span>
+                          )}
+                        </div>
+                        {rooms.length === 0 ? (
+                          <p className="text-sm text-text-muted">Add at least one room to generate a zoning report.</p>
+                        ) : preflightLoading ? (
+                          <p className="text-sm text-text-muted">Checking your home conversations...</p>
+                        ) : zoningMissingItems.length > 0 ? (
+                          <div className="space-y-1 text-sm text-text-muted">
+                            {zoningMissingItems.map((item, index) => (
+                              <div key={`${item}-${index}`}>• {item}</div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-text-muted">
+                            {zoningPreflight || zoningReport
+                              ? 'No missing items found in the latest check.'
+                              : "Click \"Check What's Missing\" to see what Archvision still needs."}
+                          </p>
+                        )}
                       </div>
-                      {(zoningPreflight?.predictedComplianceStatus || zoningReport?.status) && (
-                        <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}`}>
-                          {formatStatusLabel(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}
-                        </span>
-                      )}
-                    </div>
-                    {rooms.length === 0 ? (
-                      <p className="text-sm text-text-muted">Add at least one room to start the whole-home report.</p>
-                    ) : preflightLoading ? (
-                      <p className="text-sm text-text-muted">Checking your home conversations...</p>
-                    ) : zoningMissingItems.length > 0 ? (
-                      <div className="space-y-1 text-sm text-text-muted">
-                        {zoningMissingItems.map((item, index) => (
-                          <div key={`${item}-${index}`}>• {item}</div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-text-muted">
-                        {zoningPreflight || zoningReport
-                          ? 'No missing items found in the latest check.'
-                          : "Click \"Check What's Missing\" to see what Archvision still needs."}
-                      </p>
-                    )}
-                  </div>
 
-                  <div className="rounded-xl border border-border bg-surface-alt p-4">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
-                      Report Status
-                    </div>
-                    {!zoningReport ? (
-                      <p className="text-sm text-text-muted">No zoning report created yet.</p>
-                    ) : (
-                      <>
-                        <div className="mb-2">
-                          <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningReport.status || zoningReport.reportJson?.complianceStatus)}`}>
-                            {formatStatusLabel(zoningReport.status || zoningReport.reportJson?.complianceStatus)}
-                          </span>
+                      <div className="rounded-xl border border-border bg-surface-alt p-4">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                          Report Status
+                        </div>
+                        {!zoningReport ? (
+                          <p className="text-sm text-text-muted">No zoning report created yet.</p>
+                        ) : (
+                          <>
+                            <div className="mb-2">
+                              <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningReport.status || zoningReport.reportJson?.complianceStatus)}`}>
+                                {formatStatusLabel(zoningReport.status || zoningReport.reportJson?.complianceStatus)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-text-muted">
+                              {(zoningReport.inputAcquisition?.missingQuestions || []).length > 0
+                                ? `Archvision still needs ${(zoningReport.inputAcquisition.missingQuestions || []).length} detail${(zoningReport.inputAcquisition.missingQuestions || []).length === 1 ? '' : 's'} for a complete check.`
+                                : 'Your latest report is ready. A PDF will download automatically after each new report is created.'}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border border-border bg-surface-alt p-4">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                          Whole-Home Technical Info
                         </div>
                         <p className="text-sm text-text-muted">
-                          {(zoningReport.inputAcquisition?.missingQuestions || []).length > 0
-                            ? `Archvision still needs ${(zoningReport.inputAcquisition.missingQuestions || []).length} detail${(zoningReport.inputAcquisition.missingQuestions || []).length === 1 ? '' : 's'} for a complete check.`
-                            : 'Your latest report is ready. A PDF will download automatically after each new report is created.'}
+                          Use the dedicated chat to capture shared technical details that apply across rooms.
                         </p>
-                      </>
-                    )}
-                  </div>
+                        <div className="mt-3 space-y-1 text-sm text-text-muted">
+                          <div>• Structural constraints or load-bearing walls</div>
+                          <div>• HVAC, plumbing, and electrical upgrade plans</div>
+                          <div>• Accessibility, code, or permitting considerations</div>
+                          <div>• Whole-home materials, systems, and install preferences</div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-surface-alt p-4">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                          Status
+                        </div>
+                        <p className="text-sm text-text-muted">
+                          Technical info is stored in the whole-home technical chat as a separate thread from room chats.
+                        </p>
+                        <p className="mt-2 text-xs text-text-muted">
+                          This helps you keep report-level context in one place while rooms stay focused on design iterations.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="rounded-xl border border-border bg-surface p-4">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-text">Archvision Report Chat</h3>
+                      <h3 className="text-sm font-semibold text-text">{selectedWholeHomeReport.chatTitle}</h3>
                       <p className="text-xs text-text-muted">
-                        Continue one room conversation here. The whole-home report still uses all room conversations.
+                        {selectedWholeHomeReport.chatDescription}
                       </p>
                     </div>
-                    {rooms.length > 0 && (
-                      <label className="text-xs text-text-muted">
-                        Chat Room
-                        <select
-                          value={reportChatRoomId || ''}
-                          onChange={(e) => setReportChatRoomId(e.target.value)}
-                          className="mt-1 min-w-[180px] rounded-md border border-border bg-surface-alt px-3 py-2 text-sm text-text"
-                        >
-                          {rooms.map((room) => (
-                            <option key={room.id} value={room.id}>
-                              {room.name || 'Untitled Room'}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
                   </div>
 
-                  {rooms.length === 0 ? (
-                    <div className="rounded-lg border border-border bg-surface-alt p-4 text-sm text-text-muted">
-                      Add a room first, then you can chat with Archvision here and generate the whole-home report.
-                    </div>
-                  ) : (
-                    <div className="overflow-hidden rounded-xl border border-border bg-surface-alt">
-                      <div className="h-[360px] bg-surface">
-                        <ChatWindow
-                          key={reportChatRoomId || 'project-report-chat'}
-                          messages={reportChatMessages}
-                          loading={reportChatLoading}
-                          streaming={reportChatStreaming}
-                        />
-                      </div>
-                      <ChatInput
-                        onSend={sendReportChatMessage}
-                        disabled={!reportChatRoomId || reportChatStreaming}
+                  <div className="overflow-hidden rounded-xl border border-border bg-surface-alt">
+                    <div className="h-[360px] bg-surface">
+                      <ChatWindow
+                        key={reportChatRoomId || 'project-report-chat'}
+                        messages={reportChatMessages}
+                        loading={reportChatLoading}
+                        streaming={reportChatStreaming}
                       />
                     </div>
-                  )}
+                    <ChatInput
+                      onSend={sendReportChatMessage}
+                      disabled={!reportChatRoomId || reportChatStreaming}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
