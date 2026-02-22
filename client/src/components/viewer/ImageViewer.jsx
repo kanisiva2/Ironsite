@@ -84,9 +84,17 @@ export default function ImageViewer({
       </div>
 
       <div className="flex items-center justify-between border-t border-border bg-surface px-4 py-3">
-        <span className="text-xs text-text-muted">
-          {currentIndex + 1} / {images.length}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {images.length > 1 && images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentIndex(i)}
+              className={`h-1.5 rounded-full transition-all duration-200 ${
+                i === currentIndex ? 'w-4 bg-primary' : 'w-1.5 bg-border hover:bg-primary/40'
+              }`}
+            />
+          ))}
+        </div>
 
         <div className="flex items-center gap-2">
           <button

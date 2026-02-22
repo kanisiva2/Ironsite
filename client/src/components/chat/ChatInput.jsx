@@ -99,7 +99,7 @@ export default function ChatInput({ onSend, disabled }) {
           rows={1}
           disabled={disabled}
           className="max-h-32 min-h-[42px] flex-1 resize-none rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
-          placeholder={uploading ? 'Uploading...' : 'Type your message...'}
+          placeholder={uploading ? 'Uploading...' : 'Describe your vision…'}
         />
 
         <button

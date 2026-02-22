@@ -21,7 +21,7 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await register(email, password, displayName)
-      toast.success('Your atelier has been commissioned.')
+      toast.success('Welcome to Archvision.')
       navigate('/dashboard')
     } catch (err) {
       toast.error(err.message || 'Failed to create account')
