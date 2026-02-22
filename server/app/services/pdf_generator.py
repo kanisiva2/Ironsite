@@ -27,6 +27,15 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 logger = logging.getLogger(__name__)
 
 
+def _pdf_escape(text: str) -> str:
+    return (
+        str(text or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
 def generate_chat_summary_pdf(messages: List[dict], room_name: str = "Room") -> bytes:
     """Compile chat messages into a PDF summary. Returns PDF bytes."""
     buffer = io.BytesIO()
@@ -124,6 +133,14 @@ def generate_zoning_report_pdf(report: dict, project_name: str = "Project") -> b
         fontSize=8,
         leading=10,
     ))
+    styles.add(ParagraphStyle(
+        name="TableCellWrap",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=8.5,
+        leading=10,
+        wordWrap="CJK",
+    ))
 
     status = str(report.get("complianceStatus", "unknown")).lower()
     status_color = {
@@ -192,11 +209,11 @@ def generate_zoning_report_pdf(report: dict, project_name: str = "Project") -> b
     check_rows = [["Check", "Required", "Proposed", "Status", "Notes"]]
     for check in checks:
         check_rows.append([
-            str(check.get("name", "")),
+            Paragraph(_pdf_escape(str(check.get("name", ""))), styles["TableCellWrap"]),
             "n/a" if check.get("required") is None else str(check.get("required")),
             "n/a" if check.get("proposed") is None else str(check.get("proposed")),
             str(check.get("status", "")).replace("_", " ").upper(),
-            str(check.get("notes", "") or ""),
+            Paragraph(_pdf_escape(str(check.get("notes", "") or "")), styles["TableCellWrap"]),
         ])
     checks_table = Table(
         check_rows,
@@ -245,10 +262,17 @@ def generate_zoning_report_pdf(report: dict, project_name: str = "Project") -> b
             violation_rows.append([
                 str(violation.get("rule", "Rule")),
                 str(violation.get("severity", "info")).upper(),
-                str(violation.get("description", "")),
+                Paragraph(_pdf_escape(str(violation.get("description", ""))), styles["TableCellWrap"]),
             ])
     else:
-        violation_rows.append(["None", "-", "No violations identified from configured deterministic checks."])
+        violation_rows.append([
+            "None",
+            "-",
+            Paragraph(
+                _pdf_escape("No violations identified from configured deterministic checks."),
+                styles["TableCellWrap"],
+            ),
+        ])
 
     violations_table = Table(
         violation_rows,

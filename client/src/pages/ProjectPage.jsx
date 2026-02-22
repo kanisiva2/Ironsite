@@ -262,6 +262,11 @@ export default function ProjectPage() {
   const zoningReport = project?.regulatory?.zoning
   const zoningMissingItems = deriveZoningMissingItems({ zoningReport, zoningPreflight })
   const selectedWholeHomeReport = WHOLE_HOME_REPORT_TYPES[wholeHomeReportType] || WHOLE_HOME_REPORT_TYPES.zoning
+  const zoningDisplayStatus =
+    zoningPreflight?.predictedComplianceStatus ||
+    zoningReport?.status ||
+    zoningReport?.reportJson?.complianceStatus ||
+    null
 
   const handleCheckZoningMissing = async () => {
     if (!projectId) return
@@ -343,9 +348,9 @@ export default function ProjectPage() {
               </p>
             </div>
             <div className="flex items-center gap-3 pt-1">
-              {wholeHomeReportType === 'zoning' && (zoningPreflight?.predictedComplianceStatus || zoningReport?.status) && (
-                <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}`}>
-                  {formatStatusLabel(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}
+              {wholeHomeReportType === 'zoning' && zoningDisplayStatus && (
+                <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningDisplayStatus)}`}>
+                  {formatStatusLabel(zoningDisplayStatus)}
                 </span>
               )}
               <HiChevronRight className={`h-5 w-5 text-text-muted transition-transform ${showWholeHomeReport ? 'rotate-90' : ''}`} />
@@ -354,7 +359,7 @@ export default function ProjectPage() {
 
           {showWholeHomeReport && (
             <div className="border-t border-border px-5 py-5">
-              <div className="mb-4 grid gap-3 lg:grid-cols-[1.2fr_auto] lg:items-start">
+              <div className="mb-4 space-y-3">
                 <div className="rounded-xl border border-border bg-surface-alt p-4">
                   <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                     How This Works
@@ -385,23 +390,24 @@ export default function ProjectPage() {
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 lg:justify-end">
-                  <label className="min-w-[200px] text-xs text-text-muted">
-                    Whole-Home Report Type
-                    <select
-                      value={wholeHomeReportType}
-                      onChange={(e) => setWholeHomeReportType(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text"
-                    >
-                      {Object.entries(WHOLE_HOME_REPORT_TYPES).map(([value, config]) => (
-                        <option key={value} value={value}>
-                          {config.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {wholeHomeReportType === 'zoning' && (
-                    <>
+                <div className="rounded-xl border border-border bg-surface p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <label className="text-xs text-text-muted lg:min-w-[240px]">
+                      Whole-Home Report Type
+                      <select
+                        value={wholeHomeReportType}
+                        onChange={(e) => setWholeHomeReportType(e.target.value)}
+                        className="mt-1 w-full rounded-md border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+                      >
+                        {Object.entries(WHOLE_HOME_REPORT_TYPES).map(([value, config]) => (
+                          <option key={value} value={value}>
+                            {config.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={handleCheckZoningMissing}
                         disabled={preflightLoading || zoningBusy || rooms.length === 0}
@@ -414,9 +420,14 @@ export default function ProjectPage() {
                         disabled={zoningBusy || rooms.length === 0}
                         className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-40"
                       >
-                        {zoningBusy ? 'Creating...' : 'Create Zoning Report'}
+                        {zoningBusy ? 'Creating...' : 'Create Zoning PDF'}
                       </button>
-                    </>
+                    </div>
+                  </div>
+                  {wholeHomeReportType === 'technical_info' && (
+                    <div className="mt-2 text-xs text-text-muted">
+                      Zoning buttons stay available here so you can run the whole-home zoning check/PDF without switching tabs.
+                    </div>
                   )}
                 </div>
               </div>
@@ -430,9 +441,9 @@ export default function ProjectPage() {
                           <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                             What's Missing
                           </div>
-                          {(zoningPreflight?.predictedComplianceStatus || zoningReport?.status) && (
-                            <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}`}>
-                              {formatStatusLabel(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}
+                          {zoningDisplayStatus && (
+                            <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningDisplayStatus)}`}>
+                              {formatStatusLabel(zoningDisplayStatus)}
                             </span>
                           )}
                         </div>
@@ -459,20 +470,46 @@ export default function ProjectPage() {
                         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
                           Report Status
                         </div>
-                        {!zoningReport ? (
-                          <p className="text-sm text-text-muted">No zoning report created yet.</p>
+                        {!zoningReport && !zoningPreflight ? (
+                          <p className="text-sm text-text-muted">No zoning report or preflight check yet.</p>
                         ) : (
                           <>
-                            <div className="mb-2">
-                              <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningReport.status || zoningReport.reportJson?.complianceStatus)}`}>
-                                {formatStatusLabel(zoningReport.status || zoningReport.reportJson?.complianceStatus)}
-                              </span>
-                            </div>
-                            <p className="text-sm text-text-muted">
-                              {(zoningReport.inputAcquisition?.missingQuestions || []).length > 0
-                                ? `Archvision still needs ${(zoningReport.inputAcquisition.missingQuestions || []).length} detail${(zoningReport.inputAcquisition.missingQuestions || []).length === 1 ? '' : 's'} for a complete check.`
-                                : 'Your latest report is ready. A PDF will download automatically after each new report is created.'}
-                            </p>
+                            {zoningDisplayStatus && (
+                              <div className="mb-2">
+                                <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningDisplayStatus)}`}>
+                                  {formatStatusLabel(zoningDisplayStatus)}
+                                </span>
+                              </div>
+                            )}
+                            {zoningPreflight ? (
+                              <>
+                                <p className="text-sm text-text-muted">
+                                  {zoningMissingItems.length > 0
+                                    ? `Preflight check complete. ${zoningMissingItems.length} detail${zoningMissingItems.length === 1 ? '' : 's'} still needed before a complete zoning PDF.`
+                                    : 'Preflight check complete. No missing items were found in the latest zoning check.'}
+                                </p>
+                                <p className="mt-2 text-xs text-text-muted">
+                                  This status is from the latest preflight check and updates before PDF generation.
+                                </p>
+                                {zoningReport && (
+                                  <p className="mt-2 text-xs text-text-muted">
+                                    A saved PDF report also exists and updates after you create a new zoning PDF.
+                                  </p>
+                                )}
+                              </>
+                            ) : zoningReport ? (
+                              <p className="text-sm text-text-muted">
+                                {(zoningReport.inputAcquisition?.missingQuestions || []).length > 0
+                                  ? `Archvision still needs ${(zoningReport.inputAcquisition.missingQuestions || []).length} detail${(zoningReport.inputAcquisition.missingQuestions || []).length === 1 ? '' : 's'} for a complete check.`
+                                  : 'Your latest report is ready. A PDF will download automatically after each new report is created.'}
+                              </p>
+                            ) : (
+                              <p className="text-sm text-text-muted">
+                                {zoningMissingItems.length > 0
+                                  ? `Preflight check complete. ${zoningMissingItems.length} detail${zoningMissingItems.length === 1 ? '' : 's'} still needed before a complete zoning PDF.`
+                                  : 'Preflight check complete. No missing items were found in the latest zoning check.'}
+                              </p>
+                            )}
                           </>
                         )}
                       </div>
