@@ -37,7 +37,7 @@ export default function ProjectCard({ project, onDelete }) {
         <button
           onClick={handleDelete}
           className="rounded-lg p-1.5 text-text-muted opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
-          title="Remove estate"
+          title="Remove home"
         >
           <HiOutlineTrash className="h-4 w-4" />
         </button>

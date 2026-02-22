@@ -14,50 +14,42 @@ const SHAFT_BG = `
 function GreekColumn({ side }) {
   const isLeft = side === 'left'
 
-  // Vine paths — viewBox "0 0 220 500", column center x=110
-  // Shaft runs x=71..149 (78px wide); left vine climbs x≈72, right x≈148
+  // Shaft runs x=71..149 (center=110). Vine climbs the shaft face.
   const stemD = isLeft
-    ? 'M72,494 C64,408 88,362 52,298 C20,240 56,188 34,124 C14,66 44,14 72,8'
-    : 'M148,494 C156,408 132,362 168,298 C200,240 164,188 186,124 C206,66 176,14 148,8'
+    ? 'M85,470 C78,420 130,390 135,340 C140,290 75,270 80,220 C85,170 138,150 132,100 C126,60 88,50 92,30'
+    : 'M135,470 C142,420 90,390 85,340 C80,290 145,270 140,220 C135,170 82,150 88,100 C94,60 132,50 128,30'
 
   const tendrils = isLeft
     ? [
-        'M52,298 C30,284 2,288 -18,274',
-        'M34,210 C12,196 -16,200 -36,186',
-        'M40,134 C18,120 -10,124 -30,110',
-        'M56,48 C34,34 6,38 -14,24',
+        'M135,340 C144,330 150,322 148,312',
+        'M80,220 C70,212 66,204 68,194',
+        'M132,100 C142,92 146,84 143,74',
+        'M92,30 C82,22 78,14 80,6',
       ]
     : [
-        'M168,298 C190,284 218,288 238,274',
-        'M186,210 C208,196 236,200 256,186',
-        'M180,134 C202,120 230,124 250,110',
-        'M164,48 C186,34 214,38 234,24',
+        'M85,340 C76,330 70,322 72,312',
+        'M140,220 C150,212 154,204 152,194',
+        'M88,100 C78,92 74,84 77,74',
+        'M128,30 C138,22 142,14 140,6',
       ]
 
-  const tendrilDelays = [1.4, 1.7, 2.0, 2.3]
+  const vineBaseDelay = 1.8
+  const tendrilDelays = [2.6, 2.9, 3.2, 3.5]
+  const leafDelays = [2.98, 3.28, 3.58, 3.88]
 
   const leaves = isLeft
-    ? [{ cx: -18, cy: 274 }, { cx: -36, cy: 186 }, { cx: -30, cy: 110 }, { cx: -14, cy: 24 }]
-    : [{ cx: 238, cy: 274 }, { cx: 256, cy: 186 }, { cx: 250, cy: 110 }, { cx: 234, cy: 24 }]
-
-  const leafDelays = [1.78, 2.08, 2.38, 2.68]
+    ? [{ cx: 148, cy: 312 }, { cx: 68, cy: 194 }, { cx: 143, cy: 74 }, { cx: 80, cy: 6 }]
+    : [{ cx: 72, cy: 312 }, { cx: 152, cy: 194 }, { cx: 77, cy: 74 }, { cx: 140, cy: 6 }]
 
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {/* Abacus */}
       <div style={{ width: 100, height: 14, borderRadius: '3px 3px 0 0', background: 'linear-gradient(180deg, #e6d4b2 0%, #d4c09a 100%)', boxShadow: '0 -3px 10px rgba(118,86,34,0.12)' }} />
-      {/* Echinus */}
       <div style={{ width: 90, height: 22, background: 'linear-gradient(180deg, #ddd0b5 0%, #eaded0 100%)', clipPath: 'polygon(0% 0%, 100% 0%, 94% 100%, 6% 100%)' }} />
-      {/* Neck */}
       <div style={{ width: 78, height: 10, background: 'linear-gradient(180deg, #d2c4a2 0%, #dfd1b8 100%)', borderBottom: '1px solid rgba(118,86,34,0.16)' }} />
-      {/* Shaft */}
       <div style={{ width: 78, height: 420, background: SHAFT_BG }} />
-      {/* Torus */}
       <div style={{ width: 86, height: 13, background: 'linear-gradient(180deg, #dfd1b8 0%, #d2c4a2 100%)' }} />
-      {/* Plinth */}
       <div style={{ width: 100, height: 20, borderRadius: '0 0 4px 4px', background: 'linear-gradient(180deg, #ead8bc 0%, #d0ba98 100%)', boxShadow: '0 8px 28px rgba(118,86,34,0.24), 0 2px 6px rgba(118,86,34,0.1)' }} />
 
-      {/* SVG Vine overlay */}
       <svg
         viewBox="0 0 220 500"
         width={220}
@@ -79,7 +71,6 @@ function GreekColumn({ side }) {
           </linearGradient>
         </defs>
 
-        {/* Main stem */}
         <path
           d={stemD}
           fill="none"
@@ -90,11 +81,10 @@ function GreekColumn({ side }) {
           style={{
             strokeDasharray: 700,
             strokeDashoffset: 700,
-            animation: `vineGrow 3.2s ease-out ${isLeft ? '0.55s' : '0.7s'} both`,
+            animation: `vineGrow 3.2s ease-out ${vineBaseDelay + (isLeft ? 0 : 0.15)}s both`,
           }}
         />
 
-        {/* Tendrils */}
         {tendrils.map((d, i) => (
           <path
             key={i}
@@ -111,7 +101,6 @@ function GreekColumn({ side }) {
           />
         ))}
 
-        {/* Diamond leaves at tendril tips */}
         {leaves.map(({ cx, cy }, i) => (
           <polygon
             key={i}
@@ -155,6 +144,7 @@ export default function LandingPage() {
         backgroundColor: 'rgba(250,246,240,0.82)',
         borderBottom: '1px solid var(--color-border)',
         boxShadow: '0 1px 0 0 var(--color-border), 0 3px 0 0 rgba(200,150,92,0.12)',
+        animation: 'headerFadeIn 0.6s ease-out 2.0s both',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <div style={{
@@ -191,7 +181,7 @@ export default function LandingPage() {
               fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase',
             }}
           >
-            Begin Your Journey
+            Get Started
           </Link>
         </div>
       </header>
@@ -201,6 +191,7 @@ export default function LandingPage() {
         minHeight: '100vh', position: 'relative',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         paddingTop: '5rem', paddingBottom: '4rem',
+        overflow: 'hidden',
       }}>
         {/* Floating gold particles */}
         {PARTICLES.map((p, i) => (
@@ -225,24 +216,30 @@ export default function LandingPage() {
 
         {/* Columns + center hero content */}
         <div style={{
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-          width: '100%', padding: '0 clamp(1rem, 3vw, 4rem)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          width: '100%', maxWidth: 900,
+          padding: '0 2rem',
           position: 'relative', zIndex: 1,
+          gap: 0,
         }}>
-          {/* Left column */}
+          {/* Left column — starts at center, slides left */}
           <div
-            className="landing-columns"
-            style={{ flexShrink: 0, animation: 'columnRise 1.2s cubic-bezier(0.22,1,0.36,1) 0.1s both' }}
+            className="landing-columns scroll-column-left"
+            style={{ flexShrink: 0 }}
           >
             <GreekColumn side="left" />
           </div>
 
-          {/* Center hero content */}
-          <div style={{ textAlign: 'center', flex: 1, maxWidth: 480, margin: '0 auto', paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
+          {/* Center hero content — fades in after pillars open */}
+          <div className="scroll-content" style={{
+            textAlign: 'center', flex: 1, maxWidth: 480,
+            margin: '0 auto', paddingBottom: '2.5rem',
+            paddingLeft: '2rem', paddingRight: '2rem',
+          }}>
             {/* Star ornament bar */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center',
-              marginBottom: '1.25rem', animation: 'heroTextReveal 0.8s ease-out 0.35s both',
+              marginBottom: '1.25rem',
             }}>
               <div style={{ height: 1, width: 44, background: 'linear-gradient(90deg, transparent, rgba(200,150,92,0.5))' }} />
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -255,17 +252,15 @@ export default function LandingPage() {
             <p style={{
               fontSize: '0.64rem', letterSpacing: '0.3em', textTransform: 'uppercase',
               color: 'var(--color-text-muted)', marginBottom: '0.55rem',
-              animation: 'heroTextReveal 0.8s ease-out 0.42s both',
             }}>
-              AI Architectural Atelier
+              AI Architecture Studio
             </p>
 
-            {/* Monumental brand name */}
+            {/* Brand name */}
             <h1 style={{
               fontFamily: 'var(--font-display)', fontWeight: 300,
               fontSize: 'clamp(2.8rem, 6.5vw, 5rem)', letterSpacing: '0.22em',
               color: 'var(--color-text)', margin: '0 0 0.3rem',
-              animation: 'heroTextReveal 1s ease-out 0.5s both',
             }}>
               IRONSITE
             </h1>
@@ -274,7 +269,6 @@ export default function LandingPage() {
             <div style={{
               height: 1, width: 72, margin: '0.9rem auto',
               background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)',
-              animation: 'heroTextReveal 0.8s ease-out 0.65s both',
             }} />
 
             {/* Tagline */}
@@ -282,28 +276,15 @@ export default function LandingPage() {
               fontFamily: 'var(--font-display)', fontStyle: 'italic', fontWeight: 300,
               fontSize: '1.02rem', letterSpacing: '0.03em', lineHeight: 1.68,
               color: 'var(--color-text-muted)', marginBottom: '2rem',
-              animation: 'heroTextReveal 0.8s ease-out 0.72s both',
             }}>
-              Commission your vision.<br />
-              Sculpt every chamber. Inhabit the ideal.
+              Describe your dream space.<br />
+              Watch it come to life in 3D.
             </p>
 
             {/* CTA buttons */}
             <div style={{
               display: 'flex', gap: '0.85rem', justifyContent: 'center', flexWrap: 'wrap',
-              animation: 'heroTextReveal 0.8s ease-out 0.88s both',
             }}>
-              <Link
-                to="/register"
-                className="bg-primary"
-                style={{
-                  padding: '0.72rem 1.8rem', borderRadius: '0.75rem',
-                  fontSize: '0.76rem', fontWeight: 500, letterSpacing: '0.1em',
-                  textTransform: 'uppercase', textDecoration: 'none', color: '#fff',
-                }}
-              >
-                Start Designing
-              </Link>
               <Link
                 to="/login"
                 style={{
@@ -316,13 +297,24 @@ export default function LandingPage() {
               >
                 Sign In
               </Link>
+              <Link
+                to="/register"
+                className="bg-primary"
+                style={{
+                  padding: '0.72rem 1.8rem', borderRadius: '0.75rem',
+                  fontSize: '0.76rem', fontWeight: 500, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', textDecoration: 'none', color: '#fff',
+                }}
+              >
+                Start Designing
+              </Link>
             </div>
           </div>
 
-          {/* Right column */}
+          {/* Right column — starts at center, slides right */}
           <div
-            className="landing-columns"
-            style={{ flexShrink: 0, animation: 'columnRise 1.2s cubic-bezier(0.22,1,0.36,1) 0.2s both' }}
+            className="landing-columns scroll-column-right"
+            style={{ flexShrink: 0 }}
           >
             <GreekColumn side="right" />
           </div>
@@ -330,22 +322,20 @@ export default function LandingPage() {
 
         {/* Bottom ornamental divider */}
         <div
-          className="ornamental-divider"
+          className="ornamental-divider scroll-content"
           style={{
             width: '100%', maxWidth: 560, marginTop: '3.5rem',
-            animation: 'heroTextReveal 0.8s ease-out 1.1s both',
           }}
         >
           ◆
         </div>
 
         {/* Scroll hint */}
-        <p style={{
+        <p className="scroll-content" style={{
           fontSize: '0.63rem', letterSpacing: '0.22em', textTransform: 'uppercase',
           color: 'var(--color-text-muted)', marginTop: '1.25rem',
-          animation: 'heroTextReveal 0.8s ease-out 1.3s both',
         }}>
-          Discover the Atelier
+          See How It Works
         </p>
       </section>
 
@@ -362,14 +352,14 @@ export default function LandingPage() {
               fontSize: '0.64rem', letterSpacing: '0.3em', textTransform: 'uppercase',
               color: 'var(--color-text-muted)', marginBottom: '0.75rem',
             }}>
-              The Atelier Experience
+              How It Works
             </p>
             <h2 style={{
               fontFamily: 'var(--font-display)', fontWeight: 300,
               fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', letterSpacing: '0.04em',
               color: 'var(--color-text)', margin: '0 0 1rem',
             }}>
-              Craft Space. Sculpt Vision.
+              Design Any Room with AI
             </h2>
             <div style={{
               height: 1, width: 64, margin: '0 auto',
@@ -385,18 +375,18 @@ export default function LandingPage() {
             {[
               {
                 glyph: '⊞',
-                title: 'Architectural Dialogue',
-                body: 'Converse with an AI architect who understands proportion, light, and the timeless grammar of classical form.',
+                title: 'Talk to Your AI Architect',
+                body: 'Have a conversation about your room — dimensions, style, budget, materials. The AI asks the right questions and guides your design.',
               },
               {
                 glyph: '◈',
-                title: 'Visual Prototyping',
-                body: 'Render photorealistic impressions of your estate, refined through each exchange until the vision is precise.',
+                title: 'See It in 2D',
+                body: 'Get photorealistic images of your room design. Give feedback, adjust details, and approve the ones you love.',
               },
               {
                 glyph: '◉',
-                title: 'Immersive 3D Estates',
-                body: 'Step inside your creation with spatially accurate three-dimensional models built from your approved designs.',
+                title: 'Explore It in 3D',
+                body: 'Your approved designs become a full 3D environment you can walk through and explore from every angle.',
               },
             ].map(({ glyph, title, body }) => (
               <div
@@ -440,7 +430,7 @@ export default function LandingPage() {
           fontSize: '0.76rem', color: 'var(--color-text-muted)',
           letterSpacing: '0.08em', textTransform: 'uppercase',
         }}>
-          © 2025 Ironsite — AI Architectural Atelier
+          © 2026 Ironsite — AI Architecture Studio
         </p>
       </footer>
     </div>

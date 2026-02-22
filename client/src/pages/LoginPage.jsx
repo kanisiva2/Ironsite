@@ -40,7 +40,7 @@ export default function LoginPage() {
             Ironsite
           </h1>
           <p className="text-xs font-medium uppercase tracking-[0.3em] text-text-muted">
-            AI Architectural Atelier
+            AI Architecture Studio
           </p>
         </div>
 

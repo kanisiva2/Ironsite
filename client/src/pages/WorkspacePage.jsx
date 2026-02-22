@@ -23,6 +23,7 @@ export default function WorkspacePage() {
   const [generatedImages, setGeneratedImages] = useState([])
   const [activeJobId, setActiveJobId] = useState(null)
   const [pipelineStatus, setPipelineStatus] = useState(null)
+  const [projectName, setProjectName] = useState('')
 
   const { job: activeJob } = usePollJob(activeJobId)
 
@@ -46,6 +47,9 @@ export default function WorkspacePage() {
   }, [projectId, roomId])
 
   useEffect(() => {
+    api.get(`/projects/${projectId}`).then(({ data }) => {
+      setProjectName(data.project?.name || data.name || '')
+    }).catch(() => {})
     fetchRoom()
     fetchMessages()
   }, [fetchRoom, fetchMessages])
@@ -145,11 +149,11 @@ export default function WorkspacePage() {
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 border-b border-border bg-surface px-6 py-2 text-sm text-text-muted">
-        <Link to="/dashboard" className="transition-colors hover:text-primary">Portfolio</Link>
+        <Link to="/dashboard" className="transition-colors hover:text-primary">Homes</Link>
         <HiChevronRight className="h-3 w-3" />
-        <Link to={`/projects/${projectId}`} className="transition-colors hover:text-primary">Estate</Link>
+        <Link to={`/projects/${projectId}`} className="transition-colors hover:text-primary">{projectName || 'Home'}</Link>
         <HiChevronRight className="h-3 w-3" />
-        <span className="font-medium text-text">{room?.name || 'Chamber'}</span>
+        <span className="font-medium text-text">{room?.name || 'Room'}</span>
       </div>
 
       {/* Main workspace */}

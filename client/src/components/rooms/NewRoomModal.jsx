@@ -28,7 +28,7 @@ export default function NewRoomModal({ isOpen, onClose, onSubmit }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-text">New Chamber</h3>
+          <h3 className="text-lg font-semibold text-text">New Room</h3>
           <button
             onClick={onClose}
             className="rounded-lg p-1 text-text-muted transition-colors hover:bg-surface-alt hover:text-text"
@@ -40,7 +40,7 @@ export default function NewRoomModal({ isOpen, onClose, onSubmit }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="roomName" className="mb-1 block text-xs font-medium uppercase tracking-widest text-text-muted">
-              Chamber Name
+              Room Name
             </label>
             <input
               id="roomName"
@@ -55,7 +55,7 @@ export default function NewRoomModal({ isOpen, onClose, onSubmit }) {
 
           <div>
             <label htmlFor="roomType" className="mb-1 block text-xs font-medium uppercase tracking-widest text-text-muted">
-              Chamber Type
+              Room Type
             </label>
             <select
               id="roomType"
