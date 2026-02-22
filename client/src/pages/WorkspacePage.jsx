@@ -66,6 +66,7 @@ export default function WorkspacePage() {
       if (has3dData) {
         setActiveTab('3d')
       }
+      return data.room
     } catch {
       toast.error('Failed to load room')
     } finally {
@@ -254,14 +255,14 @@ export default function WorkspacePage() {
               disabled={approvedCount === 0 || pipelineStatus}
               className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-40"
             >
-              {pipelineStatus === 'generating_3d' ? 'Rendering…' : 'Generate 3D Model'}
+              {pipelineStatus === 'generating_3d' ? 'Rendering…' : 'Final Render'}
             </button>
 
             {approvedCount > 0 && (
               <button
                 onClick={() => handleGenerate3D('Marble 0.1-mini')}
                 disabled={pipelineStatus}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-40"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/40 hover:text-text disabled:opacity-40"
               >
                 Quick 3D
               </button>

@@ -63,10 +63,11 @@ export default function RoomCard({ room, projectId, onDelete }) {
             <HiOutlineTrash className="h-4 w-4" />
           </button>
         </div>
-        <h3 className="mb-1 text-lg font-medium text-text">{room.name}</h3>
+        <h3 className="mb-1 font-display text-xl text-text">{room.name}</h3>
         <p className="mb-4 text-sm text-text-muted">{typeLabel}</p>
         <div className="flex items-center justify-between border-t border-border/60 pt-3">
-          <span className={`text-xs font-medium uppercase tracking-wide ${status.color}`}>
+          <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${status.color}`}>
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
             {status.label}
           </span>
         </div>
@@ -103,10 +104,11 @@ export default function RoomCard({ room, projectId, onDelete }) {
             <Icon className="h-7 w-7 text-primary" />
           </div>
         </div>
-        <h3 className="mb-1 text-lg font-medium text-text">{room.name}</h3>
+        <h3 className="mb-1 font-display text-xl text-text">{room.name}</h3>
         <p className="mb-4 text-sm text-text-muted">{typeLabel}</p>
         <div className="flex items-center justify-between border-t border-border/60 pt-3">
-          <span className={`text-xs font-medium uppercase tracking-wide ${status.color}`}>
+          <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${status.color}`}>
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
             {status.label}
           </span>
         </div>

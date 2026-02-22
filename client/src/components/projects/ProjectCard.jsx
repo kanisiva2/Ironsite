@@ -43,7 +43,7 @@ export default function ProjectCard({ project, onDelete }) {
         </button>
       </div>
 
-      <h3 className="mb-1 text-lg font-medium text-text">{project.name}</h3>
+      <h3 className="mb-1 font-display text-xl text-text">{project.name}</h3>
       {project.description && (
         <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-text-muted">
           {project.description}
