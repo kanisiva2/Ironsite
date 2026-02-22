@@ -15,6 +15,7 @@ import toast from 'react-hot-toast'
 
 export default function WorkspacePage() {
   const { projectId, roomId } = useParams()
+  const [projectName, setProjectName] = useState('')
   const [room, setRoom] = useState(null)
   const [roomLoading, setRoomLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('images')
