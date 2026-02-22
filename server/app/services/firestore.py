@@ -35,6 +35,21 @@ def create_project(user_id: str, name: str, description: str = "") -> dict:
         "description": description,
         "thumbnailUrl": None,
         "status": "active",
+        "site": {
+            "address": "",
+            "parcelId": "",
+            "zoningDistrict": "",
+            "lotAreaSqFt": None,
+            "maxHeightFt": None,
+            "maxLotCoveragePct": None,
+            "setbacksFt": {"front": None, "rear": None, "left": None, "right": None},
+            "proposed": {
+                "footprintAreaSqFt": None,
+                "heightFt": None,
+                "setbacksFt": {"front": None, "rear": None, "left": None, "right": None},
+            },
+        },
+        "regulatory": {"zoning": None},
         "createdAt": firestore.SERVER_TIMESTAMP,
         "updatedAt": firestore.SERVER_TIMESTAMP,
     }
@@ -100,6 +115,7 @@ def create_room(project_id: str, name: str, room_type: str) -> dict:
         "latest3dJobId": None,
         "approved2dImageUrls": [],
         "artifactUrl": None,
+        "artifactMetadata": None,
         "worldLabs": {
             "worldId": None,
             "operationId": None,
@@ -219,7 +235,7 @@ def get_messages(project_id: str, room_id: str) -> List[dict]:
 
 # ── Generation Jobs ──────────────────────────────────────────────────────────
 
-def create_generation_job(room_id: str, project_id: str, user_id: str,
+def create_generation_job(room_id: Optional[str], project_id: str, user_id: str,
                           job_type: str, prompt: str,
                           reference_image_urls: Optional[List[str]] = None) -> dict:
     db = get_db()

@@ -1,13 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { HiPlus, HiChevronRight } from 'react-icons/hi'
 import { HiOutlineCube } from 'react-icons/hi2'
 import Navbar from '../components/layout/Navbar'
+import ChatWindow from '../components/chat/ChatWindow'
+import ChatInput from '../components/chat/ChatInput'
 import RoomCard from '../components/rooms/RoomCard'
 import NewRoomModal from '../components/rooms/NewRoomModal'
 import LoadingSpinner from '../components/shared/LoadingSpinner'
+import useChat from '../hooks/useChat'
 import useRooms from '../hooks/useRooms'
+import usePollJob from '../hooks/usePollJob'
 import api from '../services/api'
+import toast from 'react-hot-toast'
 
 /* ── Corner vine SVG accent ─────────────────────────────── */
 function CornerVine({ flip = false }) {
@@ -107,18 +112,178 @@ function HorizontalVine({ fromRight = false, top, delay = 0 }) {
   )
 }
 
+function formatStatusLabel(status) {
+  if (!status) return 'Unknown'
+  return String(status).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function statusBadgeClasses(status) {
+  if (status === 'pass') return 'border border-success/30 bg-success/10 text-success'
+  if (status === 'fail') return 'border border-danger/30 bg-danger/10 text-danger'
+  if (status === 'needs_info') return 'border border-warning/30 bg-warning/10 text-warning'
+  return 'border border-border bg-surface-alt text-text-muted'
+}
+
+function deriveZoningMissingItems({ zoningReport, zoningPreflight }) {
+  const explicit = [
+    ...(zoningPreflight?.missingQuestions || []),
+    ...(zoningReport?.inputAcquisition?.missingQuestions || []),
+  ]
+  const deduped = [...new Set(explicit.map((q) => String(q).trim()).filter(Boolean))]
+  if (deduped.length > 0) return deduped
+
+  const checks = zoningReport?.reportJson?.checks || zoningPreflight?.checks || []
+  const derived = []
+  for (const check of checks) {
+    if (check?.status !== 'needs_info') continue
+    const name = check?.name || 'This check'
+    const requiredMissing = check?.required == null
+    const proposedMissing = check?.proposed == null
+    if (requiredMissing && proposedMissing) derived.push(`${name}: add both values.`)
+    else if (requiredMissing) derived.push(`${name}: add the required zoning limit.`)
+    else if (proposedMissing) derived.push(`${name}: add your proposed value.`)
+  }
+  return [...new Set(derived)]
+}
+
 export default function ProjectPage() {
   const { projectId } = useParams()
   const { rooms, loading, error, createRoom, deleteRoom } = useRooms(projectId)
   const [showModal, setShowModal] = useState(false)
+  const [project, setProject] = useState(null)
   const [projectName, setProjectName] = useState('')
+  const [zoningPreflight, setZoningPreflight] = useState(null)
+  const [preflightLoading, setPreflightLoading] = useState(false)
+  const [zoningJobId, setZoningJobId] = useState(null)
+  const [zoningBusy, setZoningBusy] = useState(false)
+  const [showWholeHomeReport, setShowWholeHomeReport] = useState(false)
+  const [reportChatRoomId, setReportChatRoomId] = useState(null)
+
+  const { job: zoningJob } = usePollJob(zoningJobId)
+  const {
+    messages: reportChatMessages,
+    streaming: reportChatStreaming,
+    loading: reportChatLoading,
+    sendMessage: sendReportChatMessage,
+    fetchMessages: fetchReportChatMessages,
+  } = useChat(reportChatRoomId, projectId)
+
+  const fetchProject = useCallback(async () => {
+    if (!projectId) return
+    const { data } = await api.get(`/projects/${projectId}`)
+    const nextProject = data.project || data
+    setProject(nextProject)
+    setProjectName(nextProject?.name || '')
+    return nextProject
+  }, [projectId])
+
+  const downloadZoningPdf = useCallback(async (zoning) => {
+    if (!zoning) return false
+    const pdfUrl = zoning.reportPdfUrl
+    if (pdfUrl && !pdfUrl.startsWith('zoning://')) {
+      try {
+        const response = await fetch(pdfUrl)
+        if (!response.ok) throw new Error('Failed to fetch PDF')
+        const blob = await response.blob()
+        const objectUrl = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = objectUrl
+        link.download = 'zoning_report.pdf'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(objectUrl)
+        return true
+      } catch {
+        window.open(pdfUrl, '_blank', 'noopener,noreferrer')
+        return true
+      }
+    }
+    if (!zoning.reportPdfBase64) {
+      return false
+    }
+    const binary = atob(zoning.reportPdfBase64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: 'application/pdf' })
+    const objectUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = 'zoning_report.pdf'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(objectUrl)
+    return true
+  }, [])
 
   useEffect(() => {
     if (!projectId) return
-    api.get(`/projects/${projectId}`).then(({ data }) => {
-      setProjectName(data.project?.name || data.name || '')
-    }).catch(() => {})
-  }, [projectId])
+    fetchProject().catch(() => {})
+  }, [fetchProject, projectId])
+
+  useEffect(() => {
+    if (rooms.length === 0) {
+      setReportChatRoomId(null)
+      return
+    }
+    setReportChatRoomId((prev) => {
+      if (prev && rooms.some((room) => room.id === prev)) return prev
+      return rooms[0].id
+    })
+  }, [rooms])
+
+  useEffect(() => {
+    if (!showWholeHomeReport || !reportChatRoomId) return
+    fetchReportChatMessages().catch(() => {})
+  }, [showWholeHomeReport, reportChatRoomId, fetchReportChatMessages])
+
+  useEffect(() => {
+    if (zoningJob?.status === 'completed' && zoningJob?.type === 'zoning_report') {
+      ;(async () => {
+        setZoningBusy(false)
+        setZoningJobId(null)
+        const nextProject = await fetchProject().catch(() => null)
+        const didDownload = await downloadZoningPdf(nextProject?.regulatory?.zoning)
+        toast.success(didDownload ? 'Zoning report created. PDF download started.' : 'Zoning report created')
+      })()
+    } else if (zoningJob?.status === 'failed') {
+      setZoningBusy(false)
+      setZoningJobId(null)
+      toast.error(zoningJob.output?.error || 'Failed to create zoning report')
+    }
+  }, [zoningJob, fetchProject, downloadZoningPdf])
+
+  const zoningReport = project?.regulatory?.zoning
+  const zoningMissingItems = deriveZoningMissingItems({ zoningReport, zoningPreflight })
+
+  const handleCheckZoningMissing = async () => {
+    if (!projectId) return
+    try {
+      setPreflightLoading(true)
+      const { data } = await api.post('/generate/project-zoning/preflight', { projectId })
+      setZoningPreflight(data.preflight || null)
+      setShowWholeHomeReport(true)
+      toast.success('Checked what is missing for your zoning report')
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to check zoning report requirements')
+    } finally {
+      setPreflightLoading(false)
+    }
+  }
+
+  const handleGenerateProjectZoning = async () => {
+    if (!projectId) return
+    try {
+      setZoningBusy(true)
+      setShowWholeHomeReport(true)
+      const { data } = await api.post('/generate/project-zoning', { projectId })
+      setZoningJobId(data.jobId)
+    } catch (err) {
+      setZoningBusy(false)
+      toast.error(err.response?.data?.detail || 'Failed to start zoning report generation')
+    }
+  }
 
   return (
     <div className="page-vignette relative min-h-screen bg-surface-alt">
@@ -153,6 +318,173 @@ export default function ProjectPage() {
             New Room
           </button>
         </div>
+
+        <section className="relative z-10 mb-8 rounded-2xl border border-border bg-surface shadow-sm">
+          <button
+            type="button"
+            onClick={() => setShowWholeHomeReport((prev) => !prev)}
+            className="flex w-full items-start justify-between gap-4 rounded-2xl px-5 py-5 text-left hover:bg-surface-alt/50"
+          >
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-text-muted">
+                Whole-Home Report
+              </p>
+              <h2 className="text-xl text-text">Zoning Report</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                For homeowners and experts: use Archvision plus all room conversations to prepare and generate one home-level zoning report.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              {(zoningPreflight?.predictedComplianceStatus || zoningReport?.status) && (
+                <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}`}>
+                  {formatStatusLabel(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}
+                </span>
+              )}
+              <HiChevronRight className={`h-5 w-5 text-text-muted transition-transform ${showWholeHomeReport ? 'rotate-90' : ''}`} />
+            </div>
+          </button>
+
+          {showWholeHomeReport && (
+            <div className="border-t border-border px-5 py-5">
+              <div className="mb-4 grid gap-3 lg:grid-cols-[1.2fr_auto] lg:items-start">
+                <div className="rounded-xl border border-border bg-surface-alt p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                    How This Works
+                  </div>
+                  <div className="mt-2 grid gap-2 text-sm text-text-muted">
+                    <div>1. Chat with Archvision in any room, or use the embedded Archvision chat below.</div>
+                    <div>2. Archvision reviews all room conversations to identify missing zoning inputs.</div>
+                    <div>3. Create one whole-home zoning report. The PDF downloads automatically when ready.</div>
+                  </div>
+                  <div className="mt-3 text-xs text-text-muted">
+                    Expert tip: if you already know parcel/zoning limits, discuss them in chat so Archvision can use them in the report prep.
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleCheckZoningMissing}
+                    disabled={preflightLoading || zoningBusy || rooms.length === 0}
+                    className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-surface-alt disabled:opacity-40"
+                  >
+                    {preflightLoading ? "Checking..." : "Check What's Missing"}
+                  </button>
+                  <button
+                    onClick={handleGenerateProjectZoning}
+                    disabled={zoningBusy || rooms.length === 0}
+                    className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-40"
+                  >
+                    {zoningBusy ? 'Creating...' : 'Create Zoning Report'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[1.05fr_1.2fr]">
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-border bg-surface-alt p-4">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                        What's Missing
+                      </div>
+                      {(zoningPreflight?.predictedComplianceStatus || zoningReport?.status) && (
+                        <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}`}>
+                          {formatStatusLabel(zoningPreflight?.predictedComplianceStatus || zoningReport?.status)}
+                        </span>
+                      )}
+                    </div>
+                    {rooms.length === 0 ? (
+                      <p className="text-sm text-text-muted">Add at least one room to start the whole-home report.</p>
+                    ) : preflightLoading ? (
+                      <p className="text-sm text-text-muted">Checking your home conversations...</p>
+                    ) : zoningMissingItems.length > 0 ? (
+                      <div className="space-y-1 text-sm text-text-muted">
+                        {zoningMissingItems.map((item, index) => (
+                          <div key={`${item}-${index}`}>• {item}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-text-muted">
+                        {zoningPreflight || zoningReport
+                          ? 'No missing items found in the latest check.'
+                          : "Click \"Check What's Missing\" to see what Archvision still needs."}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-surface-alt p-4">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                      Report Status
+                    </div>
+                    {!zoningReport ? (
+                      <p className="text-sm text-text-muted">No zoning report created yet.</p>
+                    ) : (
+                      <>
+                        <div className="mb-2">
+                          <span className={`rounded-full px-2 py-1 text-[11px] font-medium ${statusBadgeClasses(zoningReport.status || zoningReport.reportJson?.complianceStatus)}`}>
+                            {formatStatusLabel(zoningReport.status || zoningReport.reportJson?.complianceStatus)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-text-muted">
+                          {(zoningReport.inputAcquisition?.missingQuestions || []).length > 0
+                            ? `Archvision still needs ${(zoningReport.inputAcquisition.missingQuestions || []).length} detail${(zoningReport.inputAcquisition.missingQuestions || []).length === 1 ? '' : 's'} for a complete check.`
+                            : 'Your latest report is ready. A PDF will download automatically after each new report is created.'}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-surface p-4">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-text">Archvision Report Chat</h3>
+                      <p className="text-xs text-text-muted">
+                        Continue one room conversation here. The whole-home report still uses all room conversations.
+                      </p>
+                    </div>
+                    {rooms.length > 0 && (
+                      <label className="text-xs text-text-muted">
+                        Chat Room
+                        <select
+                          value={reportChatRoomId || ''}
+                          onChange={(e) => setReportChatRoomId(e.target.value)}
+                          className="mt-1 min-w-[180px] rounded-md border border-border bg-surface-alt px-3 py-2 text-sm text-text"
+                        >
+                          {rooms.map((room) => (
+                            <option key={room.id} value={room.id}>
+                              {room.name || 'Untitled Room'}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
+
+                  {rooms.length === 0 ? (
+                    <div className="rounded-lg border border-border bg-surface-alt p-4 text-sm text-text-muted">
+                      Add a room first, then you can chat with Archvision here and generate the whole-home report.
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-xl border border-border bg-surface-alt">
+                      <div className="h-[360px] bg-surface">
+                        <ChatWindow
+                          key={reportChatRoomId || 'project-report-chat'}
+                          messages={reportChatMessages}
+                          loading={reportChatLoading}
+                          streaming={reportChatStreaming}
+                        />
+                      </div>
+                      <ChatInput
+                        onSend={sendReportChatMessage}
+                        disabled={!reportChatRoomId || reportChatStreaming}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
 
         <div className="relative z-10">
           {loading ? (
