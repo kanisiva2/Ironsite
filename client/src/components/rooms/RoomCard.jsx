@@ -41,18 +41,18 @@ export default function RoomCard({ room, projectId, onDelete }) {
   return (
     <div
       onClick={handleClick}
-      className="group cursor-pointer rounded-xl border border-border bg-surface p-5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+      className="card-lift group cursor-pointer rounded-2xl border border-border bg-surface p-6 shadow-sm hover:border-primary/40 hover:shadow-lg"
     >
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-light">
+      <div className="mb-4 flex items-start justify-between">
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary-light transition-colors duration-200 group-hover:bg-primary/10">
           {room.thumbnailUrl ? (
             <img
               src={room.thumbnailUrl}
               alt={room.name}
-              className="h-full w-full rounded-lg object-cover"
+              className="h-full w-full rounded-xl object-cover"
             />
           ) : (
-            <Icon className="h-6 w-6 text-primary" />
+            <Icon className="h-7 w-7 text-primary" />
           )}
         </div>
         <button
@@ -64,11 +64,13 @@ export default function RoomCard({ room, projectId, onDelete }) {
         </button>
       </div>
 
-      <h3 className="mb-1 text-base font-semibold text-text">{room.name}</h3>
-      <p className="mb-3 text-sm text-text-muted">{typeLabel}</p>
+      <h3 className="mb-1 text-lg font-medium text-text">{room.name}</h3>
+      <p className="mb-4 text-sm text-text-muted">{typeLabel}</p>
 
-      <div className="flex items-center justify-between">
-        <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
+      <div className="flex items-center justify-between border-t border-border/60 pt-3">
+        <span className={`text-xs font-medium tracking-wide uppercase ${status.color}`}>
+          {status.label}
+        </span>
       </div>
     </div>
   )

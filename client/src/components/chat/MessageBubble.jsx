@@ -37,7 +37,7 @@ export default function MessageBubble({ message }) {
             : 'border border-border bg-surface text-text'
         }`}
       >
-        <div className="prose prose-sm max-w-none prose-invert">
+        <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : ''}`}>
           <Markdown>{message.content}</Markdown>
         </div>
 

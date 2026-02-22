@@ -18,16 +18,17 @@ export default function ChatWindow({ messages, loading, streaming }) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex-1 overflow-y-auto p-5">
       {messages.length === 0 ? (
-        <div className="flex h-full flex-col items-center justify-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-light">
-            <span className="text-2xl">🏠</span>
+        <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+          <div
+            className="mb-7 flex h-20 w-20 items-center justify-center rounded-full bg-primary-light text-3xl"
+            style={{ boxShadow: '0 0 0 12px rgba(200,150,92,0.07)' }}
+          >
+            🏠
           </div>
-          <h3 className="mb-2 text-lg font-semibold text-text">
-            Start Your Design Consultation
-          </h3>
-          <p className="max-w-sm text-sm text-text-muted">
+          <h3 className="mb-3 text-xl text-text">Start Your Design Consultation</h3>
+          <p className="max-w-xs text-sm leading-relaxed text-text-muted">
             Describe what you envision for this room. The AI architect will guide you
             through dimensions, styles, materials, and more.
           </p>
