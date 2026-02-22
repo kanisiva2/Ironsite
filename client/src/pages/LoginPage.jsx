@@ -31,7 +31,7 @@ export default function LoginPage() {
           <p className="mt-2 text-text-muted">AI Architect Studio</p>
         </div>
 
-        <div className="rounded-xl bg-surface p-8 shadow-lg">
+        <div className="rounded-xl border border-border bg-surface p-8 shadow-lg">
           <h2 className="mb-6 text-xl font-semibold text-text">Sign In</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -45,7 +45,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-light"
+                className="w-full rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40"
                 placeholder="you@example.com"
               />
             </div>
@@ -61,7 +61,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-light"
+                className="w-full rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40"
                 placeholder="••••••••"
               />
             </div>

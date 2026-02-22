@@ -47,7 +47,7 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-light"
+              className="w-full rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40"
               placeholder="e.g. Cambridge House"
             />
           </div>
@@ -61,7 +61,7 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full resize-none rounded-lg border border-border bg-surface px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-light"
+              className="w-full resize-none rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40"
               placeholder="Brief description of the project..."
             />
           </div>

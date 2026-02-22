@@ -30,7 +30,7 @@ export default function Navbar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
             IS
           </div>
-          <span className="text-lg font-semibold text-text">Ironsite</span>
+          <span className="font-display text-lg font-semibold tracking-wide text-text">Ironsite</span>
         </Link>
       </div>
 

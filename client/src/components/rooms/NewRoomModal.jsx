@@ -48,7 +48,7 @@ export default function NewRoomModal({ isOpen, onClose, onSubmit }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-light"
+              className="w-full rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40"
               placeholder="e.g. Master Bedroom"
             />
           </div>
@@ -61,7 +61,7 @@ export default function NewRoomModal({ isOpen, onClose, onSubmit }) {
               id="roomType"
               value={roomType}
               onChange={(e) => setRoomType(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-light"
+              className="w-full rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40"
             >
               {ROOM_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
