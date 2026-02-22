@@ -29,7 +29,7 @@ export default function ChatWindow({ messages, loading, streaming }) {
           </div>
           <h3 className="mb-3 text-xl text-text">Start Your Design Session</h3>
           <p className="max-w-xs text-sm leading-relaxed text-text-muted">
-            Describe your vision for this chamber and your AI architect will help
+            Describe your vision for this room and your AI architect will help
             bring it to life — from layout and materials to lighting and style.
           </p>
         </div>

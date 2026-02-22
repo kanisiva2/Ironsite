@@ -38,10 +38,17 @@ export default function App() {
             duration: 4000,
             style: {
               borderRadius: '0.75rem',
-              background: '#1a1510',
-              color: '#f5ead6',
+              background: '#ffffff',
+              color: '#2c1a05',
               fontSize: '0.875rem',
-              borderLeft: '3px solid #c8965c',
+              border: '1px solid rgba(200,150,92,0.28)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)',
+            },
+            success: {
+              iconTheme: { primary: '#c8965c', secondary: '#ffffff' },
+            },
+            error: {
+              iconTheme: { primary: '#e05252', secondary: '#ffffff' },
             },
           }}
         />
