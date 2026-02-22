@@ -19,12 +19,3 @@ class Generate3DRequest(BaseModel):
     roomId: str
     projectId: str
     model: str = "Marble 0.1-plus"
-
-
-class GenerateZoningReportRequest(BaseModel):
-    roomId: str
-    projectId: str
-
-
-class GenerateProjectZoningReportRequest(BaseModel):
-    projectId: str
