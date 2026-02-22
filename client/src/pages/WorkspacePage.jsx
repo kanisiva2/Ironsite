@@ -145,11 +145,11 @@ export default function WorkspacePage() {
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 border-b border-border bg-surface px-6 py-2 text-sm text-text-muted">
-        <Link to="/" className="transition-colors hover:text-primary">Dashboard</Link>
+        <Link to="/dashboard" className="transition-colors hover:text-primary">Portfolio</Link>
         <HiChevronRight className="h-3 w-3" />
-        <Link to={`/projects/${projectId}`} className="transition-colors hover:text-primary">Project</Link>
+        <Link to={`/projects/${projectId}`} className="transition-colors hover:text-primary">Estate</Link>
         <HiChevronRight className="h-3 w-3" />
-        <span className="font-medium text-text">{room?.name || 'Room'}</span>
+        <span className="font-medium text-text">{room?.name || 'Chamber'}</span>
       </div>
 
       {/* Main workspace */}
@@ -173,7 +173,7 @@ export default function WorkspacePage() {
                   : 'text-text-muted hover:text-text'
               }`}
             >
-              Images {generatedImages.length > 0 && `(${generatedImages.length})`}
+              Renderings {generatedImages.length > 0 && `(${generatedImages.length})`}
             </button>
             <button
               onClick={() => setActiveTab('3d')}
@@ -183,7 +183,7 @@ export default function WorkspacePage() {
                   : 'text-text-muted hover:text-text'
               }`}
             >
-              3D Viewer
+              Spatial Model
             </button>
           </div>
 
@@ -210,7 +210,7 @@ export default function WorkspacePage() {
               disabled={approvedCount === 0 || pipelineStatus}
               className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-secondary/80 disabled:opacity-40"
             >
-              {pipelineStatus === 'generating_artifact' ? 'Generating...' : 'Generate Artifact'}
+              {pipelineStatus === 'generating_artifact' ? 'Generating…' : 'Generate Blueprint'}
             </button>
 
             <button
@@ -218,7 +218,7 @@ export default function WorkspacePage() {
               disabled={!hasArtifact || pipelineStatus}
               className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-40"
             >
-              {pipelineStatus === 'generating_3d' ? 'Building 3D...' : 'Generate 3D'}
+              {pipelineStatus === 'generating_3d' ? 'Rendering…' : 'Generate 3D Model'}
             </button>
 
             {hasArtifact && (
@@ -227,7 +227,7 @@ export default function WorkspacePage() {
                 disabled={pipelineStatus}
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-40"
               >
-                Quick 3D (Mini)
+                Quick 3D
               </button>
             )}
 
@@ -238,7 +238,7 @@ export default function WorkspacePage() {
                 rel="noopener noreferrer"
                 className="ml-auto text-sm text-primary transition-colors hover:text-primary-hover"
               >
-                Download Artifact
+                Download Blueprint
               </a>
             )}
           </div>

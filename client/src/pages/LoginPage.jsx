@@ -15,7 +15,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       toast.error(err.message || 'Failed to sign in')
     } finally {
@@ -40,7 +40,7 @@ export default function LoginPage() {
             Ironsite
           </h1>
           <p className="text-xs font-medium uppercase tracking-[0.3em] text-text-muted">
-            AI Architect Studio
+            AI Architectural Atelier
           </p>
         </div>
 
@@ -95,9 +95,9 @@ export default function LoginPage() {
           <div className="ornamental-divider my-6 text-xs">◆</div>
 
           <p className="text-center text-sm text-text-muted">
-            Don&apos;t have an account?{' '}
+            Not yet a member?{' '}
             <Link to="/register" className="font-medium text-primary hover:text-primary-hover">
-              Sign Up
+              Begin Your Journey
             </Link>
           </p>
         </div>
