@@ -320,3 +320,34 @@ textarea::placeholder {
     radial-gradient(ellipse 50% 40% at 0% 100%,  rgba(26, 18, 8, 0.18) 0%, transparent 100%),
     radial-gradient(ellipse 50% 40% at 100% 100%, rgba(26, 18, 8, 0.15) 0%, transparent 100%);
 }
+
+/* ─── Room card corner peel effect ──────────────────────── */
+/* Only activates on cards that have a preview image        */
+
+/* Card face mask: full-card white layer that gains a      */
+/* triangular hole in the top-right on hover               */
+.room-card-peel .peel-card-face {
+  /* 4-point full rect */
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+  transition: clip-path 0.5s cubic-bezier(0.34, 1.06, 0.64, 1);
+}
+
+.room-card-peel:hover .peel-card-face {
+  /* Slides left to expose a 200px rectangular strip on the right */
+  clip-path: polygon(0% 0%, calc(100% - 200px) 0%, calc(100% - 200px) 100%, 0% 100%);
+}
+
+/* No flap — just hide it */
+.room-card-peel .peel-flap {
+  display: none;
+}
+
+/* Content layer clips in sync so border-t never bleeds onto the image */
+.room-card-peel .peel-content {
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+  transition: clip-path 0.5s cubic-bezier(0.34, 1.06, 0.64, 1);
+}
+
+.room-card-peel:hover .peel-content {
+  clip-path: polygon(0% 0%, calc(100% - 200px) 0%, calc(100% - 200px) 100%, 0% 100%);
+}
