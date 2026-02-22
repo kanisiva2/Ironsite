@@ -3,7 +3,8 @@ import api from '../services/api'
 import { getIdToken } from '../services/firebase'
 import toast from 'react-hot-toast'
 
-export default function useChat(roomId, projectId) {
+export default function useChat(roomId, projectId, options = {}) {
+  const { onGenerationStarted } = options
   const [messages, setMessages] = useState([])
   const [streaming, setStreaming] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -62,6 +63,7 @@ export default function useChat(roomId, projectId) {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let generationStarted = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -102,7 +104,33 @@ export default function useChat(roomId, projectId) {
               }
 
               if (payload.action) {
-                toast.success(`Generating ${payload.action.type}...`)
+                const actionType = payload.action.type
+                const is2dAction =
+                  actionType === 'generate_2d' || actionType === 'generate_2d_image'
+
+                if (is2dAction && !generationStarted) {
+                  generationStarted = true
+                  const actionPrompt = payload.action.args?.prompt || content
+                  const referenceImageUrls = Array.isArray(imageUrls) ? imageUrls : []
+
+                  try {
+                    const { data } = await api.post('/generate/2d', {
+                      roomId,
+                      projectId,
+                      prompt: actionPrompt,
+                      referenceImageUrls,
+                    })
+                    if (data?.jobId) {
+                      onGenerationStarted?.(data.jobId)
+                    }
+                    toast.success('Generating 2D image...')
+                  } catch (actionErr) {
+                    generationStarted = false
+                    toast.error(actionErr.response?.data?.detail || 'Failed to start 2D generation')
+                  }
+                } else if (!is2dAction) {
+                  toast.success(`Generating ${actionType}...`)
+                }
               }
             } catch {
               // skip malformed SSE data
@@ -116,7 +144,7 @@ export default function useChat(roomId, projectId) {
     } finally {
       setStreaming(false)
     }
-  }, [roomId, projectId])
+  }, [onGenerationStarted, projectId, roomId])
 
   const stopStreaming = useCallback(() => {
     if (abortRef.current) {

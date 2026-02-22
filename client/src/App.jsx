@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
 import ProjectPage from './pages/ProjectPage'
 import WorkspacePage from './pages/WorkspacePage'
+import Viewer3DPage from './pages/Viewer3DPage'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/projects/:projectId" element={<ProjectPage />} />
               <Route path="/projects/:projectId/rooms/:roomId" element={<WorkspacePage />} />
+              <Route path="/projects/:projectId/rooms/:roomId/3d" element={<Viewer3DPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

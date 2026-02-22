@@ -17,9 +17,14 @@ async def _run_2d_generation(job_id: str, project_id: str, room_id: str,
                               prompt: str, reference_urls: List[str]):
     """Background task: call Nano Banana, update job and room."""
     try:
+        logger.info(
+            "2D generation job %s started (project=%s room=%s)",
+            job_id, project_id, room_id
+        )
         fs.update_generation_job(job_id, {"status": "processing"})
 
         image_url = await nanobanana.generate_image(prompt, reference_urls)
+        logger.info("2D generation job %s produced image URL: %s", job_id, image_url)
 
         fs.update_generation_job(job_id, {
             "status": "completed",
@@ -32,6 +37,10 @@ async def _run_2d_generation(job_id: str, project_id: str, room_id: str,
             content="Here's the generated visualization based on our discussion.",
             image_urls=[image_url],
             metadata={"type": "image_generation", "generationId": job_id},
+        )
+        logger.info(
+            "2D generation job %s saved assistant image message (project=%s room=%s)",
+            job_id, project_id, room_id
         )
 
         logger.info("2D generation job %s completed", job_id)
@@ -71,6 +80,10 @@ async def generate_2d(body: Generate2DRequest,
         _run_2d_generation,
         job["id"], body.projectId, body.roomId,
         body.prompt, body.referenceImageUrls,
+    )
+    logger.info(
+        "2D generation job %s queued from API (project=%s room=%s)",
+        job["id"], body.projectId, body.roomId
     )
 
     return {"jobId": job["id"], "status": "pending"}

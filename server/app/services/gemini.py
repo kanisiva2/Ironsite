@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, List
 
 import google.generativeai as genai
 
@@ -50,7 +50,7 @@ def _get_model():
     if _model is None:
         genai.configure(api_key=settings.gemini_api_key)
         _model = genai.GenerativeModel(
-            "gemini-3.1",
+            "gemini-3.1-pro-preview",
             tools=[GENERATE_2D_TOOL],
             system_instruction=_load_prompt("system_consultant.txt"),
         )
@@ -59,6 +59,41 @@ def _get_model():
 
 def _load_prompt(filename: str) -> str:
     return (_PROMPTS_DIR / filename).read_text()
+
+
+def _to_json_compatible(value: Any):
+    """Convert SDK/protobuf containers into plain JSON-serializable values."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+
+    if isinstance(value, dict):
+        return {str(key): _to_json_compatible(val) for key, val in value.items()}
+
+    if isinstance(value, (list, tuple, set)):
+        return [_to_json_compatible(item) for item in value]
+
+    if hasattr(value, "items"):
+        try:
+            return {
+                str(key): _to_json_compatible(val)
+                for key, val in value.items()
+            }
+        except Exception:
+            pass
+
+    if hasattr(value, "__iter__") and not isinstance(value, (str, bytes, bytearray)):
+        try:
+            return [_to_json_compatible(item) for item in value]
+        except Exception:
+            pass
+
+    if hasattr(value, "to_dict"):
+        try:
+            return _to_json_compatible(value.to_dict())
+        except Exception:
+            pass
+
+    return str(value)
 
 
 def _format_history(messages: List[dict]) -> List[dict]:
@@ -105,7 +140,7 @@ async def stream_chat(messages: List[dict]) -> AsyncGenerator:
                         yield {
                             "type": "function_call",
                             "name": fc.name,
-                            "args": dict(fc.args) if fc.args else {},
+                            "args": _to_json_compatible(fc.args) if fc.args else {},
                         }
                     elif hasattr(part, "text") and part.text:
                         full_text += part.text
@@ -125,7 +160,7 @@ async def generate_artifact_content(conversation_summary: str,
 
     genai.configure(api_key=settings.gemini_api_key)
     artifact_model = genai.GenerativeModel(
-        "gemini-3.1",
+        "gemini-3.1-pro-preview",
         system_instruction=artifact_prompt,
     )
 
