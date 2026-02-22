@@ -124,7 +124,7 @@ export default function DashboardPage() {
             <div className="mb-2 flex items-center gap-3">
               <div className="h-px w-5 bg-primary/45" />
               <p className="text-xs font-medium uppercase tracking-widest text-text-muted">
-                Your Projects
+                Your Homes
               </p>
             </div>
             <h1 className="text-5xl font-light tracking-wide text-text">Homes</h1>

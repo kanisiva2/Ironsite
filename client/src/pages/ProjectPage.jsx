@@ -194,7 +194,7 @@ export default function ProjectPage() {
           <span className="font-medium text-text">{projectName || 'Rooms'}</span>
         </nav>
 
-        <div className="relative z-10 mb-10 flex items-end justify-between">
+        <div className="relative z-10 mb-4 flex items-end justify-between">
           <div>
             <p className="mb-1 text-xs font-medium uppercase tracking-widest text-text-muted">
               {projectName || 'Rooms'}
@@ -209,6 +209,9 @@ export default function ProjectPage() {
             New Room
           </button>
         </div>
+
+        {/* Classical ornamental divider */}
+        <div className="ornamental-divider relative z-10 mb-10 text-xs">◇</div>
 
         <div className="relative z-10">
           {loading ? (

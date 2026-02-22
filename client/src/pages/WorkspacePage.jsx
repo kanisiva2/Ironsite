@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { HiChevronRight } from 'react-icons/hi'
 import Navbar from '../components/layout/Navbar'
@@ -37,6 +37,7 @@ export default function WorkspacePage() {
   const [pipelineStatus, setPipelineStatus] = useState(null)
   const [threeProgress, setThreeProgress] = useState(null)
   const [timeNow, setTimeNow] = useState(() => Date.now())
+  const pendingDownloadRef = useRef(false)
 
   const handleGenerationStarted = useCallback((jobId) => {
     setPipelineStatus('generating_2d')
@@ -90,6 +91,7 @@ export default function WorkspacePage() {
       if (has3dData) {
         setActiveTab('3d')
       }
+      return data.room
     } catch {
       toast.error('Failed to load room')
     } finally {
@@ -117,7 +119,12 @@ export default function WorkspacePage() {
         setPipelineStatus(null)
         setThreeProgress(null)
       } else if (activeJob.type === 'artifact') {
-        fetchRoom()
+        if (pendingDownloadRef.current) {
+          pendingDownloadRef.current = false
+          fetchRoom().then((updatedRoom) => { if (updatedRoom) performDownload(updatedRoom) })
+        } else {
+          fetchRoom()
+        }
         setPipelineStatus(null)
       }
       setActiveJobId(null)
@@ -185,14 +192,45 @@ export default function WorkspacePage() {
     }
   }
 
-  const handleGenerateArtifact = async () => {
+  const performDownload = (roomData) => {
+    const artifactUrl = roomData?.artifactUrl
+    if (!artifactUrl) return
+
+    if (artifactUrl.startsWith('artifact://')) {
+      if (!roomData?.artifactContent) {
+        toast.error('Spec content is unavailable')
+        return
+      }
+      const safeRoomName = (roomData?.name || 'room')
+        .trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')
+      const blob = new Blob([roomData.artifactContent], { type: 'text/markdown;charset=utf-8' })
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = `${safeRoomName || 'room'}-spec.md`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(objectUrl)
+      return
+    }
+    window.open(artifactUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleDownloadSpec = async () => {
+    if (room?.artifactUrl) {
+      performDownload(room)
+      return
+    }
+    pendingDownloadRef.current = true
     try {
       setPipelineStatus('generating_artifact')
       const { data } = await api.post('/generate/artifact', { roomId, projectId })
       setActiveJobId(data.jobId)
     } catch {
-      toast.error('Failed to generate artifact')
+      toast.error('Failed to generate spec')
       setPipelineStatus(null)
+      pendingDownloadRef.current = false
     }
   }
 
@@ -211,36 +249,6 @@ export default function WorkspacePage() {
       setPipelineStatus(null)
       setThreeProgress(null)
     }
-  }
-
-  const handleDownloadArtifact = () => {
-    const artifactUrl = room?.artifactUrl
-    if (!artifactUrl) return
-
-    if (artifactUrl.startsWith('artifact://')) {
-      if (!room?.artifactContent) {
-        toast.error('Artifact content is unavailable')
-        return
-      }
-
-      const safeRoomName = (room?.name || 'room')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-_]/g, '')
-      const blob = new Blob([room.artifactContent], { type: 'text/markdown;charset=utf-8' })
-      const objectUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = objectUrl
-      link.download = `${safeRoomName || 'room'}-artifact.md`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(objectUrl)
-      return
-    }
-
-    window.open(artifactUrl, '_blank', 'noopener,noreferrer')
   }
 
   if (roomLoading) {
@@ -363,37 +371,30 @@ export default function WorkspacePage() {
             )}
             <div className="flex items-center gap-3">
             <button
-              onClick={handleGenerateArtifact}
-              disabled={approvedCount === 0 || pipelineStatus}
-              className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-secondary/80 disabled:opacity-40"
-            >
-              {pipelineStatus === 'generating_artifact' ? 'Generating…' : 'Generate Blueprint'}
-            </button>
-
-            <button
               onClick={() => handleGenerate3D('Marble 0.1-plus')}
               disabled={!hasArtifact || pipelineStatus}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-40"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-40"
             >
-              {pipelineStatus === 'generating_3d' ? 'Rendering…' : 'Generate 3D Model'}
+              {pipelineStatus === 'generating_3d' ? 'Rendering…' : 'Final Render'}
             </button>
 
             {hasArtifact && (
               <button
                 onClick={() => handleGenerate3D('Marble 0.1-mini')}
                 disabled={pipelineStatus}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-40"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/40 hover:text-text disabled:opacity-40"
               >
                 Quick 3D
               </button>
             )}
 
-            {room?.artifactUrl && (
+            {approvedCount > 0 && (
               <button
-                onClick={handleDownloadArtifact}
-                className="ml-auto text-sm text-primary transition-colors hover:text-primary-hover"
+                onClick={handleDownloadSpec}
+                disabled={!!pipelineStatus}
+                className="ml-auto flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/40 hover:text-text disabled:opacity-40"
               >
-                Download Artifact
+                {pipelineStatus === 'generating_artifact' ? 'Generating Spec…' : 'Download Spec'}
               </button>
             )}
             </div>
