@@ -39,7 +39,7 @@ export default function NewRoomModal({ isOpen, onClose, onSubmit }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="roomName" className="mb-1 block text-sm font-medium text-text">
+            <label htmlFor="roomName" className="mb-1 block text-xs font-medium uppercase tracking-widest text-text-muted">
               Room Name
             </label>
             <input
@@ -54,7 +54,7 @@ export default function NewRoomModal({ isOpen, onClose, onSubmit }) {
           </div>
 
           <div>
-            <label htmlFor="roomType" className="mb-1 block text-sm font-medium text-text">
+            <label htmlFor="roomType" className="mb-1 block text-xs font-medium uppercase tracking-widest text-text-muted">
               Room Type
             </label>
             <select
@@ -84,7 +84,7 @@ export default function NewRoomModal({ isOpen, onClose, onSubmit }) {
               disabled={loading || !name.trim()}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Room'}
+              {loading ? 'Creating…' : 'Create'}
             </button>
           </div>
         </form>

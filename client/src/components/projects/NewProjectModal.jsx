@@ -27,7 +27,7 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-xl bg-surface p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-text">New Project</h3>
+          <h3 className="text-lg font-semibold text-text">New Home</h3>
           <button
             onClick={onClose}
             className="rounded-lg p-1 text-text-muted transition-colors hover:bg-surface-alt hover:text-text"
@@ -38,8 +38,8 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="projectName" className="mb-1 block text-sm font-medium text-text">
-              Project Name
+            <label htmlFor="projectName" className="mb-1 block text-xs font-medium uppercase tracking-widest text-text-muted">
+              Home Name
             </label>
             <input
               id="projectName"
@@ -48,13 +48,13 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }) {
               onChange={(e) => setName(e.target.value)}
               required
               className="w-full rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40"
-              placeholder="e.g. Cambridge House"
+              placeholder="e.g. My Dream Kitchen"
             />
           </div>
 
           <div>
-            <label htmlFor="projectDesc" className="mb-1 block text-sm font-medium text-text">
-              Description (optional)
+            <label htmlFor="projectDesc" className="mb-1 block text-xs font-medium uppercase tracking-widest text-text-muted">
+              Brief (optional)
             </label>
             <textarea
               id="projectDesc"
@@ -62,7 +62,7 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }) {
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               className="w-full resize-none rounded-lg border border-border bg-surface-alt px-4 py-2.5 text-text outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/40"
-              placeholder="Brief description of the project..."
+              placeholder="A brief description of your project…"
             />
           </div>
 
@@ -79,7 +79,7 @@ export default function NewProjectModal({ isOpen, onClose, onSubmit }) {
               disabled={loading || !name.trim()}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Project'}
+              {loading ? 'Creating…' : 'Create'}
             </button>
           </div>
         </form>

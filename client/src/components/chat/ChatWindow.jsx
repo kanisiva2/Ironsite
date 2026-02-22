@@ -27,10 +27,10 @@ export default function ChatWindow({ messages, loading, streaming }) {
           >
             🏠
           </div>
-          <h3 className="mb-3 text-xl text-text">Start Your Design Consultation</h3>
+          <h3 className="mb-3 text-xl text-text">Start Your Design Session</h3>
           <p className="max-w-xs text-sm leading-relaxed text-text-muted">
-            Describe what you envision for this room. The AI architect will guide you
-            through dimensions, styles, materials, and more.
+            Describe your vision for this chamber and your AI architect will help
+            bring it to life — from layout and materials to lighting and style.
           </p>
         </div>
       ) : (

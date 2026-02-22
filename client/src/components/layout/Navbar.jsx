@@ -26,17 +26,17 @@ export default function Navbar() {
   return (
     <nav className="classical-nav sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-surface px-6">
       <div className="flex items-center gap-4">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/dashboard" className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#a07535] text-sm font-semibold text-white shadow-sm">
             IS
           </div>
-          <span className="font-display text-lg font-semibold tracking-wide text-text">Ironsite</span>
+          <span className="font-display text-lg font-semibold tracking-wide text-text">Archvision</span>
         </Link>
       </div>
 
       <div className="flex items-center gap-3">
         <Link
-          to="/"
+          to="/dashboard"
           className="rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-alt hover:text-text"
           title="Dashboard"
         >

@@ -214,3 +214,104 @@ textarea::placeholder {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(200, 150, 92, 0.45); }
+
+/* ─── Landing page keyframes ─────────────────────────────── */
+@keyframes vineGrow {
+  from { stroke-dashoffset: 700; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes tendrillGrow {
+  from { stroke-dashoffset: 130; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes leafReveal {
+  from { opacity: 0; }
+  to   { opacity: 0.82; }
+}
+
+@keyframes ambientGlow {
+  from { transform: scale(0.92); opacity: 0.5; }
+  to   { transform: scale(1.08); opacity: 0.9; }
+}
+
+@keyframes particleFloat {
+  0%   { transform: translateY(0px)    rotate(0deg);   opacity: 0.3; }
+  50%  { transform: translateY(-18px)  rotate(180deg); opacity: 0.7; }
+  100% { transform: translateY(0px)    rotate(360deg); opacity: 0.3; }
+}
+
+/* ─── Scroll-opening animation ───────────────────────────── */
+/* Left pillar starts at center, slides LEFT to its natural position */
+@keyframes scrollOpenLeft {
+  0%   { transform: translateX(300px); opacity: 0.7; }
+  40%  { opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Right pillar starts at center, slides RIGHT to its natural position */
+@keyframes scrollOpenRight {
+  0%   { transform: translateX(-300px); opacity: 0.7; }
+  40%  { opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Hero text hidden behind pillars, then fades up once they part */
+@keyframes scrollContentReveal {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Header slides down after everything settles */
+@keyframes headerFadeIn {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.scroll-column-left {
+  animation: scrollOpenLeft 1.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.scroll-column-right {
+  animation: scrollOpenRight 1.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.scroll-content {
+  animation: scrollContentReveal 0.9s ease-out 1.0s both;
+}
+
+/* ─── Hide columns on mobile ─────────────────────────────── */
+@media (max-width: 640px) {
+  .landing-columns { display: none; }
+  .scroll-content { animation-delay: 0.2s; }
+}
+
+/* ─── Interior page corner vine keyframes ────────────────── */
+@keyframes smallVineGrow {
+  from { stroke-dashoffset: 420; }
+  to   { stroke-dashoffset: 0;   }
+}
+
+@keyframes smallTendrilGrow {
+  from { stroke-dashoffset: 65; }
+  to   { stroke-dashoffset: 0;  }
+}
+
+/* ─── Page corner vignette — dark amber warmth ───────────── */
+.page-vignette {
+  position: relative;
+}
+
+.page-vignette::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 50% 38% at 0% 0%,   rgba(26, 18, 8, 0.16) 0%, transparent 100%),
+    radial-gradient(ellipse 50% 38% at 100% 0%,  rgba(26, 18, 8, 0.13) 0%, transparent 100%),
+    radial-gradient(ellipse 50% 40% at 0% 100%,  rgba(26, 18, 8, 0.18) 0%, transparent 100%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(26, 18, 8, 0.15) 0%, transparent 100%);
+}
